@@ -3,185 +3,418 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BuilderClaw — Dashboard</title>
+  <title>BuilderClaw</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
       background: #f5f3ef;
       color: #2d2d2d;
-      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
     }
 
-    /* --- Header --- */
-    header {
-      background: #fff;
-      border-bottom: 1px solid #e5e2dc;
-      padding: 0 24px;
-      height: 56px;
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 300px;
+      background: #f5f3ef;
+      border-right: 1px solid #e5e2dc;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 20px 20px 16px;
+      -webkit-app-region: drag;
+    }
+    .sidebar-header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a1a;
+      padding-left: 60px; /* room for traffic lights */
+    }
+    .sidebar-search {
+      padding: 0 16px 12px;
+    }
+    .sidebar-search input {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #e8e5e0;
+      font-size: 13px;
+      color: #2d2d2d;
+      outline: none;
+    }
+    .sidebar-search input::placeholder { color: #8e8e93; }
+
+    /* Conversation list */
+    .conversations {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+    .conv-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .conv-item:hover { background: #e8e5e0; }
+    .conv-item.active { background: #c9a87c; color: #fff; }
+    .conv-item.active .conv-preview,
+    .conv-item.active .conv-time { color: rgba(255,255,255,0.7); }
+    .conv-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #e8e5e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .conv-item.active .conv-avatar { background: rgba(255,255,255,0.2); }
+    .conv-info { flex: 1; min-width: 0; }
+    .conv-name { font-size: 15px; font-weight: 600; }
+    .conv-preview {
+      font-size: 13px; color: #8e8e93;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .conv-time { font-size: 11px; color: #8e8e93; flex-shrink: 0; }
+    .conv-badge {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #c9a87c; color: #fff;
+      font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #e5e2dc;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
     }
-    header h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; }
-    .header-right { display: flex; align-items: center; gap: 16px; }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      display: inline-block;
-    }
-    .status-dot.green { background: #4caf50; }
-    .status-dot.yellow { background: #ff9800; }
-    .status-dot.red { background: #f44336; }
-    .wa-status { font-size: 13px; color: #6b6b6b; display: flex; align-items: center; gap: 6px; }
-
-    /* --- Tabs --- */
-    .tabs {
+    .sidebar-footer .status {
+      font-size: 12px;
+      color: #8e8e93;
       display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .status-dot.green { background: #34c759; }
+    .status-dot.yellow { background: #ff9f0a; }
+    .status-dot.red { background: #ff3b30; }
+    .settings-btn {
+      background: none; border: none;
+      font-size: 18px; cursor: pointer;
+      color: #8e8e93; padding: 4px;
+      border-radius: 6px;
+    }
+    .settings-btn:hover { background: #e8e5e0; }
+
+    /* ===== CHAT AREA ===== */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
       background: #fff;
+    }
+
+    /* Chat header */
+    .chat-header {
+      padding: 16px 24px;
       border-bottom: 1px solid #e5e2dc;
-      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      -webkit-app-region: drag;
     }
-    .tab {
-      padding: 12px 20px;
+    .chat-header-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #f5f3ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .chat-header-info { flex: 1; }
+    .chat-header-name { font-size: 16px; font-weight: 600; }
+    .chat-header-status { font-size: 12px; color: #8e8e93; }
+    .chat-header-actions { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+    .header-btn {
+      background: none; border: none;
+      font-size: 18px; cursor: pointer;
+      color: #8e8e93; padding: 6px;
+      border-radius: 8px;
+    }
+    .header-btn:hover { background: #f5f3ef; }
+
+    /* Messages */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .messages::-webkit-scrollbar { width: 6px; }
+    .messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+    /* Message bubble */
+    .msg-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      max-width: 70%;
+      animation: msgIn 0.2s ease;
+    }
+    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-row.bear { align-self: flex-start; }
+    .msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #f5f3ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 14px;
-      font-weight: 500;
-      color: #6b6b6b;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
+      flex-shrink: 0;
     }
-    .tab:hover { color: #2d2d2d; }
-    .tab.active { color: #1a1a1a; border-bottom-color: #c9a87c; }
+    .msg-row.user .msg-avatar { display: none; }
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.45;
+      word-wrap: break-word;
+      position: relative;
+    }
+    .msg-row.bear .bubble {
+      background: #f0ede8;
+      color: #2d2d2d;
+      border-bottom-left-radius: 6px;
+    }
+    .msg-row.user .bubble {
+      background: #c9a87c;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+    }
+    .msg-time {
+      font-size: 11px;
+      color: #8e8e93;
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+    .msg-row.user .msg-time { text-align: right; }
 
-    /* --- Content --- */
-    .content { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
-    .panel { display: none; }
-    .panel.active { display: block; }
+    /* System message */
+    .msg-system {
+      text-align: center;
+      padding: 8px 0;
+      font-size: 12px;
+      color: #8e8e93;
+    }
 
-    /* --- Cards --- */
-    .card {
-      background: #fff;
+    /* Delegation indicator */
+    .delegation {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
       border-radius: 12px;
-      border: 1px solid #e5e2dc;
-      padding: 20px 24px;
-      margin-bottom: 16px;
-    }
-    .card h3 {
-      font-size: 14px;
-      font-weight: 600;
+      background: #f5f3ef;
+      font-size: 12px;
       color: #6b6b6b;
+    }
+
+    /* Typing indicator */
+    .typing-row {
+      display: none;
+      align-self: flex-start;
+      align-items: flex-end;
+      gap: 8px;
+      max-width: 70%;
+    }
+    .typing-row.visible { display: flex; }
+    .typing-bubble {
+      padding: 12px 18px;
+      border-radius: 18px;
+      background: #f0ede8;
+      border-bottom-left-radius: 6px;
+      display: flex;
+      gap: 4px;
+    }
+    .typing-bubble span {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #aaa;
+      animation: typingBounce 1.4s infinite ease-in-out;
+    }
+    .typing-bubble span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-bubble span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ===== INPUT AREA ===== */
+    .input-area {
+      padding: 12px 24px 20px;
+      border-top: 1px solid #e5e2dc;
+      background: #fff;
+    }
+
+    /* File attachments preview */
+    .attachments {
+      display: none;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .attachments.has-files { display: flex; }
+    .attachment-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #f5f3ef;
+      font-size: 12px;
+      color: #6b6b6b;
+    }
+    .attachment-chip .remove {
+      cursor: pointer;
+      color: #c9a87c;
+      font-weight: 600;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .input-row textarea {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1.5px solid #e5e2dc;
+      border-radius: 20px;
+      font-size: 15px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 120px;
+      min-height: 40px;
+      line-height: 1.4;
+      background: #faf9f7;
+      transition: border 0.2s;
+    }
+    .input-row textarea:focus { border-color: #c9a87c; background: #fff; }
+    .input-row textarea::placeholder { color: #8e8e93; }
+    .attach-btn, .send-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .attach-btn {
+      background: #f5f3ef;
+      color: #8e8e93;
+    }
+    .attach-btn:hover { background: #e8e5e0; }
+    .send-btn {
+      background: #c9a87c;
+      color: #fff;
+      font-size: 20px;
+    }
+    .send-btn:hover { background: #b8956a; }
+    .send-btn:disabled { background: #ddd; cursor: default; }
+
+    /* Drag & drop overlay */
+    .drop-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(201,168,124,0.08);
+      border: 3px dashed #c9a87c;
+      border-radius: 12px;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      margin: 8px;
+    }
+    .drop-overlay.visible { display: flex; }
+    .drop-overlay-text {
+      background: #fff;
+      padding: 20px 40px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #c9a87c;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    /* ===== SETTINGS PANEL ===== */
+    .settings-panel {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #fff;
+      z-index: 100;
+      flex-direction: column;
+    }
+    .settings-panel.visible { display: flex; }
+    .settings-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid #e5e2dc;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .settings-header h2 { font-size: 18px; font-weight: 600; flex: 1; }
+    .settings-close {
+      background: none; border: none;
+      font-size: 20px; cursor: pointer;
+      color: #8e8e93; padding: 4px;
+    }
+    .settings-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .settings-section { margin-bottom: 32px; }
+    .settings-section h3 {
+      font-size: 12px;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      color: #8e8e93;
       margin-bottom: 12px;
     }
-
-    /* --- Grid --- */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    @media (max-width: 768px) {
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    }
-
-    /* --- Messages --- */
-    .msg-list { max-height: 500px; overflow-y: auto; }
-    .msg {
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .msg.in { background: #faf9f7; border-left: 3px solid #c9a87c; }
-    .msg.out { background: #f0f7f0; border-left: 3px solid #6b9e6b; }
-    .msg .meta {
-      font-size: 12px;
-      color: #6b6b6b;
-      margin-bottom: 4px;
-    }
-
-    /* --- Agents --- */
-    .agent-card {
-      background: #faf9f7;
-      border-radius: 8px;
-      padding: 16px;
-      text-align: center;
-    }
-    .agent-card .name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-    .agent-card .role { font-size: 13px; color: #6b6b6b; margin-bottom: 12px; }
-    .agent-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .agent-badge.idle { background: #e5e2dc; color: #6b6b6b; }
-    .agent-badge.running { background: #d4edda; color: #155724; }
-    .agent-badge.error { background: #f8d7da; color: #721c24; }
-
-    /* --- Memory Forms --- */
-    .mem-section { margin-bottom: 24px; }
-    .mem-section h4 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
-    .mem-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-    .mem-table th {
-      text-align: left;
-      padding: 8px 12px;
-      background: #faf9f7;
-      border-bottom: 1px solid #e5e2dc;
-      font-weight: 500;
-      color: #6b6b6b;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .mem-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid #f0ede8;
-    }
-    .mem-table tr:hover td { background: #faf9f7; }
-
-    /* --- Buttons --- */
-    .btn {
-      display: inline-block;
-      padding: 8px 20px;
-      border-radius: 8px;
-      border: none;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-primary { background: #c9a87c; color: #fff; }
-    .btn-primary:hover { background: #b8956a; }
-    .btn-sm { padding: 4px 12px; font-size: 12px; }
-    .btn-danger { background: #f8d7da; color: #721c24; }
-    .btn-danger:hover { background: #f1b3b8; }
-
-    /* --- Task Input --- */
-    .task-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .task-bar input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 1px solid #e5e2dc;
-      border-radius: 8px;
-      font-size: 14px;
-      background: #faf9f7;
-      outline: none;
-    }
-    .task-bar input:focus { border-color: #c9a87c; }
-
-    /* --- Settings --- */
     .setting-row {
       display: flex;
       justify-content: space-between;
@@ -189,339 +422,474 @@
       padding: 12px 0;
       border-bottom: 1px solid #f0ede8;
     }
-    .setting-row:last-child { border-bottom: none; }
     .setting-label { font-size: 14px; }
-    .setting-value { font-size: 14px; color: #6b6b6b; }
+    .setting-value { font-size: 14px; color: #8e8e93; }
 
-    /* --- Stat --- */
-    .stat { text-align: center; padding: 8px 0; }
-    .stat .value { font-size: 28px; font-weight: 700; color: #1a1a1a; }
-    .stat .label { font-size: 12px; color: #6b6b6b; margin-top: 4px; }
-
-    /* --- Empty state --- */
-    .empty {
-      text-align: center;
-      padding: 40px;
-      color: #6b6b6b;
-      font-size: 14px;
+    /* Agent cards in settings */
+    .agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .agent-card {
+      padding: 12px;
+      border-radius: 10px;
+      background: #faf9f7;
+      border: 1px solid #e5e2dc;
     }
+    .agent-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .agent-role { font-size: 12px; color: #8e8e93; margin-bottom: 8px; }
+    .agent-status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .agent-status-badge.idle { background: #e5e2dc; color: #6b6b6b; }
+    .agent-status-badge.running { background: #d4edda; color: #155724; }
+
+    /* Welcome message */
+    .welcome-msg {
+      text-align: center;
+      padding: 60px 40px;
+      color: #8e8e93;
+    }
+    .welcome-msg .bear-icon { font-size: 48px; margin-bottom: 16px; }
+    .welcome-msg h2 { font-size: 20px; color: #2d2d2d; margin-bottom: 8px; }
+    .welcome-msg p { font-size: 14px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
+
+    /* Hidden file input */
+    #fileInput { display: none; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>BuilderClaw</h1>
-    <div class="header-right">
-      <div class="wa-status">
+  <!-- Drag & drop overlay -->
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-overlay-text">Drop files to attach</div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>BuilderClaw</h1>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" placeholder="Search messages..." id="searchInput">
+    </div>
+    <div class="conversations" id="convList">
+      <div class="conv-item active" onclick="selectConv('bear')">
+        <div class="conv-avatar">🐻</div>
+        <div class="conv-info">
+          <div class="conv-name">Bear</div>
+          <div class="conv-preview" id="bearPreview">Your AI office manager</div>
+        </div>
+        <div class="conv-time" id="bearTime"></div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="status">
         <span class="status-dot" id="waDot"></span>
         <span id="waLabel">Checking...</span>
       </div>
+      <button class="settings-btn" onclick="toggleSettings()" title="Settings">⚙</button>
     </div>
-  </header>
+  </aside>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="home">Home</div>
-    <div class="tab" data-tab="roles">Roles</div>
-    <div class="tab" data-tab="memory">Memory</div>
-    <div class="tab" data-tab="settings">Settings</div>
-  </div>
-
-  <div class="content">
-
-    <!-- HOME TAB -->
-    <div class="panel active" id="panel-home">
-      <div class="grid-3" style="margin-bottom:16px;">
-        <div class="card">
-          <div class="stat">
-            <div class="value" id="statAgents">0</div>
-            <div class="label">Active Agents</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="stat">
-            <div class="value" id="statMessages">0</div>
-            <div class="label">Messages Today</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="stat">
-            <div class="value" id="statCost">$0</div>
-            <div class="label">Est. Cost Today</div>
-          </div>
-        </div>
+  <!-- CHAT AREA -->
+  <main class="chat-area" style="position:relative;">
+    <!-- Chat header -->
+    <div class="chat-header">
+      <div class="chat-header-avatar">🐻</div>
+      <div class="chat-header-info">
+        <div class="chat-header-name">Bear</div>
+        <div class="chat-header-status" id="bearStatus">Online</div>
       </div>
-
-      <div class="card">
-        <h3>Send a Task to Bear</h3>
-        <div class="task-bar">
-          <input id="taskInput" placeholder="e.g. Draft a change order for the Johnson project..." onkeydown="if(event.key==='Enter')sendTask()">
-          <button class="btn btn-primary" onclick="sendTask()">Send</button>
-        </div>
-        <div id="taskResult" style="display:none; padding:12px; background:#faf9f7; border-radius:8px; font-size:14px; line-height:1.5;"></div>
-      </div>
-
-      <div class="card">
-        <h3>Recent Messages</h3>
-        <div class="msg-list" id="msgList">
-          <div class="empty">No messages yet. Send a WhatsApp message to get started.</div>
-        </div>
+      <div class="chat-header-actions">
+        <button class="header-btn" onclick="toggleSettings()" title="Settings">⚙</button>
       </div>
     </div>
 
-    <!-- ROLES TAB -->
-    <div class="panel" id="panel-roles">
-      <div class="grid-3" id="agentGrid">
-        <!-- Populated by JS -->
+    <!-- Messages -->
+    <div class="messages" id="messages">
+      <div class="welcome-msg" id="welcomeMsg">
+        <div class="bear-icon">🐻</div>
+        <h2>Hey there!</h2>
+        <p>I'm Bear, your AI office manager. Ask me anything about your projects,
+           estimates, safety compliance, or billing. I'll handle it or get the right
+           specialist on it.</p>
       </div>
     </div>
 
-    <!-- MEMORY TAB -->
-    <div class="panel" id="panel-memory">
-      <div class="grid-2">
-        <div>
-          <div class="card">
-            <h3>Company</h3>
-            <div id="companyInfo">Loading...</div>
-          </div>
+    <!-- Typing indicator -->
+    <div class="typing-row" id="typingRow">
+      <div class="msg-avatar">🐻</div>
+      <div class="typing-bubble">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
 
-          <div class="card">
-            <h3>Projects</h3>
-            <div id="projectList">Loading...</div>
-            <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="showAddProject()">Add Project</button>
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="attachments" id="attachments"></div>
+      <div class="input-row">
+        <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">📎</button>
+        <textarea id="msgInput" rows="1" placeholder="Message Bear..."
+                  onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">↑</button>
+      </div>
+    </div>
+    <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+
+    <!-- Settings panel -->
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="settings-close" onclick="toggleSettings()">✕</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-section">
+          <h3>WhatsApp</h3>
+          <div class="setting-row">
+            <span class="setting-label">Status</span>
+            <span class="setting-value" id="settWaStatus">--</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Phone</span>
+            <span class="setting-value" id="settWaPhone">--</span>
           </div>
         </div>
 
-        <div>
-          <div class="card">
-            <h3>Contacts</h3>
-            <div id="contactList">Loading...</div>
-            <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="showAddContact()">Add Contact</button>
+        <div class="settings-section">
+          <h3>Company</h3>
+          <div id="settCompany">Loading...</div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Agents</h3>
+          <div class="agent-grid" id="agentGrid"></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>System</h3>
+          <div class="setting-row">
+            <span class="setting-label">Version</span>
+            <span class="setting-value">1.0.0</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Re-run setup</span>
+            <a href="/setup" style="font-size:14px; color:#c9a87c;">Open Setup</a>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- SETTINGS TAB -->
-    <div class="panel" id="panel-settings">
-      <div class="card">
-        <h3>WhatsApp</h3>
-        <div class="setting-row">
-          <span class="setting-label">Status</span>
-          <span class="setting-value" id="settingsWaStatus">--</span>
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">Phone Number</span>
-          <span class="setting-value" id="settingsWaPhone">--</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>System</h3>
-        <div class="setting-row">
-          <span class="setting-label">Version</span>
-          <span class="setting-value">1.0.0</span>
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">Dashboard</span>
-          <span class="setting-value">http://localhost:3000</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Danger Zone</h3>
-        <div class="setting-row">
-          <span class="setting-label">Re-run setup wizard</span>
-          <button class="btn btn-danger btn-sm" onclick="if(confirm('Re-run setup?'))window.location='/setup'">Reset Setup</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  </main>
 
   <script>
-    // --- Tab navigation ---
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-      });
-    });
+    // --- State ---
+    let pendingFiles = [];
+    let currentJobId = null;
+    let messages = [];
+    let lastMsgId = 0;
 
     const ROLES = {
-      bear: { name: 'Bear', role: 'Main Agent — routes all tasks' },
-      pm: { name: 'PM', role: 'Project Manager — schedules, RFIs, submittals' },
-      estimator: { name: 'Estimator', role: 'Takeoffs, cost estimates, material lists' },
-      accounts: { name: 'Accounts', role: 'Billing, invoicing, lien waivers' },
-      safety: { name: 'Safety', role: 'OSHA compliance, toolbox talks' },
+      bear: { emoji: '🐻', name: 'Bear', role: 'Main Agent' },
+      pm: { emoji: '📋', name: 'PM', role: 'Project Manager' },
+      estimator: { emoji: '📐', name: 'Estimator', role: 'Cost Estimates' },
+      accounts: { emoji: '💰', name: 'Accounts', role: 'Billing' },
+      safety: { emoji: '🦺', name: 'Safety', role: 'OSHA Compliance' },
     };
 
-    // --- Data fetching ---
-    async function fetchStatus() {
+    // --- Messaging ---
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text && pendingFiles.length === 0) return;
+
+      // Show user message immediately
+      const fileNames = pendingFiles.map(f => f.name);
+      const fullMsg = fileNames.length > 0
+        ? text + '\n[Attached: ' + fileNames.join(', ') + ']'
+        : text;
+
+      addMessage('user', fullMsg);
+
+      // Clear input
+      input.value = '';
+      input.style.height = 'auto';
+      clearAttachments();
+
+      // Hide welcome
+      const welcome = document.getElementById('welcomeMsg');
+      if (welcome) welcome.style.display = 'none';
+
+      // Show typing
+      showTyping(true);
+
+      // Send to Bear
+      try {
+        const r = await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: fullMsg }),
+        });
+        const d = await r.json();
+        if (d.jobId) {
+          currentJobId = d.jobId;
+          pollJob(d.jobId);
+        }
+      } catch (err) {
+        showTyping(false);
+        addMessage('bear', 'Sorry, something went wrong. Make sure BuilderClaw is running.');
+      }
+    }
+
+    async function pollJob(jobId) {
+      const check = async () => {
+        try {
+          const r = await fetch('/api/chat/job/' + jobId);
+          const d = await r.json();
+          if (d.status === 'done') {
+            showTyping(false);
+            addMessage('bear', d.result);
+            currentJobId = null;
+            return;
+          }
+          if (d.status === 'error') {
+            showTyping(false);
+            addMessage('bear', 'Error: ' + (d.error || 'Task failed. Try again.'));
+            currentJobId = null;
+            return;
+          }
+          // Still running — poll again
+          setTimeout(check, 2000);
+        } catch {
+          setTimeout(check, 3000);
+        }
+      };
+      check();
+    }
+
+    function addMessage(role, text) {
+      const container = document.getElementById('messages');
+      const isUser = role === 'user';
+
+      const row = document.createElement('div');
+      row.className = 'msg-row ' + (isUser ? 'user' : 'bear');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      avatar.textContent = '🐻';
+
+      const wrapper = document.createElement('div');
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      const time = document.createElement('div');
+      time.className = 'msg-time';
+      time.textContent = formatTime(new Date());
+
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(time);
+
+      if (!isUser) row.appendChild(avatar);
+      row.appendChild(wrapper);
+
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+
+      // Update sidebar preview
+      document.getElementById('bearPreview').textContent = text.slice(0, 40) + (text.length > 40 ? '...' : '');
+      document.getElementById('bearTime').textContent = formatTime(new Date());
+    }
+
+    function showTyping(show) {
+      const row = document.getElementById('typingRow');
+      if (show) {
+        row.classList.add('visible');
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+      } else {
+        row.classList.remove('visible');
+      }
+    }
+
+    // --- Files ---
+    function handleFiles(fileList) {
+      const files = Array.from(fileList);
+      pendingFiles.push(...files);
+      renderAttachments();
+    }
+
+    function renderAttachments() {
+      const container = document.getElementById('attachments');
+      if (pendingFiles.length === 0) {
+        container.className = 'attachments';
+        container.innerHTML = '';
+        return;
+      }
+      container.className = 'attachments has-files';
+      container.innerHTML = pendingFiles.map((f, i) => `
+        <div class="attachment-chip">
+          📄 ${escHtml(f.name)}
+          <span class="remove" onclick="removeFile(${i})">✕</span>
+        </div>
+      `).join('');
+    }
+
+    function removeFile(idx) {
+      pendingFiles.splice(idx, 1);
+      renderAttachments();
+    }
+
+    function clearAttachments() {
+      pendingFiles = [];
+      renderAttachments();
+      document.getElementById('fileInput').value = '';
+    }
+
+    // --- Drag & Drop ---
+    let dragCounter = 0;
+    document.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dragCounter++;
+      document.getElementById('dropOverlay').classList.add('visible');
+    });
+    document.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter === 0) document.getElementById('dropOverlay').classList.remove('visible');
+    });
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      document.getElementById('dropOverlay').classList.remove('visible');
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+
+    // --- Settings ---
+    function toggleSettings() {
+      const panel = document.getElementById('settingsPanel');
+      panel.classList.toggle('visible');
+      if (panel.classList.contains('visible')) loadSettings();
+    }
+
+    async function loadSettings() {
       try {
         const r = await fetch('/api/status');
         const d = await r.json();
 
-        // WhatsApp status
+        document.getElementById('settWaStatus').textContent = d.whatsapp || '--';
+        document.getElementById('settWaPhone').textContent = d.phoneNumber || '--';
+
+        // Company
+        const comp = d.company;
+        const compEl = document.getElementById('settCompany');
+        if (comp && comp.name) {
+          compEl.innerHTML = `
+            <div class="setting-row"><span class="setting-label">Name</span><span class="setting-value">${escHtml(comp.name)}</span></div>
+            <div class="setting-row"><span class="setting-label">Trade</span><span class="setting-value">${escHtml(comp.trade || '--')}</span></div>
+            <div class="setting-row"><span class="setting-label">State</span><span class="setting-value">${escHtml(comp.state || '--')}</span></div>
+          `;
+        } else {
+          compEl.innerHTML = '<span style="font-size:13px;color:#8e8e93;">Not configured</span>';
+        }
+
+        // Agents
+        const agents = d.agents || {};
+        const grid = document.getElementById('agentGrid');
+        grid.innerHTML = Object.entries(ROLES).map(([key, info]) => {
+          const a = agents[key] || {};
+          const status = a.status || 'idle';
+          return `
+            <div class="agent-card">
+              <div class="agent-name">${info.emoji} ${info.name}</div>
+              <div class="agent-role">${info.role}</div>
+              <span class="agent-status-badge ${status}">${status}</span>
+            </div>
+          `;
+        }).join('');
+      } catch {}
+    }
+
+    // --- Status polling ---
+    async function pollStatus() {
+      try {
+        const r = await fetch('/api/status');
+        const d = await r.json();
         const dot = document.getElementById('waDot');
         const label = document.getElementById('waLabel');
         if (d.whatsapp === 'connected') {
           dot.className = 'status-dot green';
-          label.textContent = 'WhatsApp Connected';
+          label.textContent = 'WhatsApp';
+          document.getElementById('bearStatus').textContent = 'Online';
         } else if (d.whatsapp === 'connecting' || d.whatsapp === 'qr_pending') {
           dot.className = 'status-dot yellow';
-          label.textContent = 'Connecting...';
+          label.textContent = 'Connecting';
+          document.getElementById('bearStatus').textContent = 'Connecting...';
         } else {
           dot.className = 'status-dot red';
-          label.textContent = 'Disconnected';
+          label.textContent = 'Offline';
+          document.getElementById('bearStatus').textContent = 'Dashboard only';
         }
-
-        // Settings tab
-        document.getElementById('settingsWaStatus').textContent = d.whatsapp || '--';
-        document.getElementById('settingsWaPhone').textContent = d.phoneNumber || '--';
-
-        // Stats
-        const agents = d.agents || {};
-        const running = Object.values(agents).filter(a => a.status === 'running').length;
-        document.getElementById('statAgents').textContent = running;
-        document.getElementById('statCost').textContent = '$' + (d.costToday || 0).toFixed(2);
-
-        // Agents grid
-        renderAgents(agents);
       } catch {}
     }
 
-    async function fetchMessages() {
+    // --- Load existing messages ---
+    async function loadMessages() {
       try {
         const r = await fetch('/api/messages?limit=50');
         const msgs = await r.json();
-        const list = document.getElementById('msgList');
-        if (!msgs.length) {
-          list.innerHTML = '<div class="empty">No messages yet. Send a WhatsApp message to get started.</div>';
-          document.getElementById('statMessages').textContent = '0';
-          return;
-        }
-        document.getElementById('statMessages').textContent = msgs.length;
-        list.innerHTML = msgs.map(m => `
-          <div class="msg ${m.direction}">
-            <div class="meta">${m.sender_name || m.role} &middot; ${timeAgo(m.created_at)}</div>
-            <div>${escHtml(m.content)}</div>
-          </div>
-        `).join('');
-      } catch {}
-    }
+        if (msgs.length === 0) return;
 
-    function renderAgents(agents) {
-      const grid = document.getElementById('agentGrid');
-      grid.innerHTML = Object.entries(ROLES).map(([key, info]) => {
-        const a = agents[key] || {};
-        const status = a.status || 'idle';
-        const badgeClass = status === 'running' ? 'running' : status === 'error' ? 'error' : 'idle';
-        return `
-          <div class="card agent-card">
-            <div class="name">${info.name}</div>
-            <div class="role">${info.role}</div>
-            <span class="agent-badge ${badgeClass}">${status}</span>
-          </div>
-        `;
-      }).join('');
-    }
+        document.getElementById('welcomeMsg').style.display = 'none';
+        const container = document.getElementById('messages');
 
-    async function fetchMemory() {
-      try {
-        const [compR, projR, contR] = await Promise.all([
-          fetch('/api/company'), fetch('/api/projects'), fetch('/api/contacts')
-        ]);
-        const company = await compR.json();
-        const projects = await projR.json();
-        const contacts = await contR.json();
+        msgs.reverse().forEach(m => {
+          const role = (m.direction === 'out' && m.role === 'user') ? 'user' : 'bear';
+          const row = document.createElement('div');
+          row.className = 'msg-row ' + role;
 
-        // Company
-        const ci = document.getElementById('companyInfo');
-        if (company.name) {
-          ci.innerHTML = `
-            <div class="setting-row"><span class="setting-label">Name</span><span class="setting-value">${escHtml(company.name)}</span></div>
-            <div class="setting-row"><span class="setting-label">Trade</span><span class="setting-value">${escHtml(company.trade || '--')}</span></div>
-            <div class="setting-row"><span class="setting-label">State</span><span class="setting-value">${escHtml(company.state || '--')}</span></div>
-            <div class="setting-row"><span class="setting-label">Team</span><span class="setting-value">${escHtml(company.team_size || '--')}</span></div>
-          `;
-        } else {
-          ci.innerHTML = '<div class="empty">No company info. <a href="/setup">Run setup</a></div>';
-        }
+          const avatar = document.createElement('div');
+          avatar.className = 'msg-avatar';
+          avatar.textContent = '🐻';
 
-        // Projects
-        const pl = document.getElementById('projectList');
-        if (projects.length) {
-          pl.innerHTML = `<table class="mem-table"><thead><tr><th>Name</th><th>Client</th><th>Status</th></tr></thead><tbody>` +
-            projects.map(p => `<tr><td>${escHtml(p.name)}</td><td>${escHtml(p.client || '--')}</td><td>${escHtml(p.status || 'active')}</td></tr>`).join('') +
-            '</tbody></table>';
-        } else {
-          pl.innerHTML = '<div class="empty">No projects yet.</div>';
-        }
+          const wrapper = document.createElement('div');
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          bubble.textContent = m.content;
 
-        // Contacts
-        const cl = document.getElementById('contactList');
-        if (contacts.length) {
-          cl.innerHTML = `<table class="mem-table"><thead><tr><th>Name</th><th>Role</th><th>Phone</th></tr></thead><tbody>` +
-            contacts.map(c => `<tr><td>${escHtml(c.name)}</td><td>${escHtml(c.role || '--')}</td><td>${escHtml(c.phone || '--')}</td></tr>`).join('') +
-            '</tbody></table>';
-        } else {
-          cl.innerHTML = '<div class="empty">No contacts yet.</div>';
-        }
-      } catch {}
-    }
+          const time = document.createElement('div');
+          time.className = 'msg-time';
+          time.textContent = m.created_at ? formatTime(new Date(m.created_at)) : '';
 
-    // --- Task sending ---
-    async function sendTask() {
-      const input = document.getElementById('taskInput');
-      const task = input.value.trim();
-      if (!task) return;
+          wrapper.appendChild(bubble);
+          wrapper.appendChild(time);
 
-      const resultDiv = document.getElementById('taskResult');
-      resultDiv.style.display = 'block';
-      resultDiv.textContent = 'Sending to Bear...';
-      input.value = '';
-
-      try {
-        const r = await fetch('/api/agent/task', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ task, agent: 'bear' })
+          if (role !== 'user') row.appendChild(avatar);
+          row.appendChild(wrapper);
+          container.appendChild(row);
         });
-        const d = await r.json();
-        if (d.error) {
-          resultDiv.textContent = 'Error: ' + d.error;
-        } else {
-          resultDiv.textContent = d.result || 'Task completed.';
+
+        container.scrollTop = container.scrollHeight;
+
+        // Update sidebar
+        const last = msgs[msgs.length - 1];
+        if (last) {
+          document.getElementById('bearPreview').textContent = last.content.slice(0, 40);
+          document.getElementById('bearTime').textContent = last.created_at ? formatTime(new Date(last.created_at)) : '';
         }
-      } catch (err) {
-        resultDiv.textContent = 'Connection error. Is BuilderClaw running?';
-      }
-    }
-
-    // --- Memory modals (simple prompt-based for now) ---
-    async function showAddProject() {
-      const name = prompt('Project name:');
-      if (!name) return;
-      const client = prompt('Client name:') || '';
-      await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, client, status: 'active' })
-      });
-      fetchMemory();
-    }
-
-    async function showAddContact() {
-      const name = prompt('Contact name:');
-      if (!name) return;
-      const role = prompt('Role (e.g. GC, Inspector):') || '';
-      const phone = prompt('Phone:') || '';
-      await fetch('/api/contacts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, role, phone })
-      });
-      fetchMemory();
+      } catch {}
     }
 
     // --- Helpers ---
@@ -531,23 +899,21 @@
       return d.innerHTML;
     }
 
-    function timeAgo(ts) {
-      if (!ts) return '';
-      const diff = Date.now() - new Date(ts).getTime();
-      const mins = Math.floor(diff / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return mins + 'm ago';
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) return hrs + 'h ago';
-      return Math.floor(hrs / 24) + 'd ago';
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function selectConv(name) {
+      // Only bear for now
     }
 
     // --- Init ---
-    fetchStatus();
-    fetchMessages();
-    fetchMemory();
-    setInterval(fetchStatus, 10000);
-    setInterval(fetchMessages, 15000);
+    pollStatus();
+    loadMessages();
+    setInterval(pollStatus, 10000);
+
+    // Focus input
+    document.getElementById('msgInput').focus();
   </script>
 </body>
 </html>

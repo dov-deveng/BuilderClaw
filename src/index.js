@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import QRCode from "qrcode";
 import { startCredentialProxy } from "./agents/credential-proxy.js";
 import { runContainer, stopContainer, getAgentStatuses, getContainerInfo, shutdownAll } from "./agents/container-runner.js";
 import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext } from "./memory/db.js";
@@ -14,7 +15,7 @@ import whatsapp from "./whatsapp/client.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "..");
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
@@ -28,14 +29,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- Setup check ---
+// --- Helpers ---
 function isSetupComplete() {
   return getConfig("setup_complete") === "true";
 }
 
-// --- Routes ---
+function checkDocker() {
+  try {
+    execSync("docker info", { timeout: 5000, stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-// Serve setup wizard or dashboard based on setup state
+// --- Routes ---
 app.get("/", (req, res) => {
   if (!isSetupComplete()) {
     res.sendFile(path.join(__dirname, "setup", "index.html"));
@@ -48,7 +56,10 @@ app.get("/setup", (req, res) => {
   res.sendFile(path.join(__dirname, "setup", "index.html"));
 });
 
-// --- Setup API ---
+// =====================
+// SETUP API
+// =====================
+
 app.get("/api/setup/status", (req, res) => {
   const wa = whatsapp.getStatus();
   res.json({
@@ -57,14 +68,74 @@ app.get("/api/setup/status", (req, res) => {
     phoneNumber: wa.phoneNumber,
     company: getCompany(),
     hasDocker: checkDocker(),
-    hasClaude: !!getConfig("claude_authenticated"),
+    hasClaude: !!getConfig("anthropic_api_key"),
   });
 });
 
-app.get("/api/setup/whatsapp-qr", (req, res) => {
+app.get("/api/setup/check-docker", (req, res) => {
+  res.json({ installed: checkDocker() });
+});
+
+app.post("/api/setup/save-api-key", (req, res) => {
+  const { apiKey } = req.body;
+  if (!apiKey || apiKey.length < 10) {
+    return res.status(400).json({ error: "Valid API key required" });
+  }
+
+  // Save to .env file
+  const envPath = path.join(PROJECT_ROOT, ".env");
+  let content = "";
+  if (fs.existsSync(envPath)) {
+    content = fs.readFileSync(envPath, "utf-8");
+    content = content.split("\n").filter(l => !l.startsWith("ANTHROPIC_API_KEY=")).join("\n");
+  }
+  content = content.trim() + "\nANTHROPIC_API_KEY=" + apiKey + "\n";
+  fs.writeFileSync(envPath, content);
+
+  // Mark as configured
+  setConfig("anthropic_api_key", "configured");
+
+  res.json({ ok: true });
+});
+
+app.post("/api/setup/test-claude", async (req, res) => {
+  const { apiKey } = req.body;
+  if (!apiKey) return res.status(400).json({ error: "API key required" });
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 10,
+        messages: [{ role: "user", content: "Say ok" }],
+      }),
+    });
+    if (response.ok) {
+      res.json({ valid: true });
+    } else {
+      const err = await response.json().catch(() => ({}));
+      res.json({ valid: false, error: err.error?.message || `HTTP ${response.status}` });
+    }
+  } catch (err) {
+    res.json({ valid: false, error: err.message });
+  }
+});
+
+app.get("/api/setup/whatsapp-qr", async (req, res) => {
   const wa = whatsapp.getStatus();
   if (wa.qrCode) {
-    res.json({ qr: wa.qrCode, status: wa.status });
+    try {
+      const dataUrl = await QRCode.toDataURL(wa.qrCode, { width: 280, margin: 2 });
+      res.json({ qr: dataUrl, status: wa.status });
+    } catch {
+      res.json({ qr: null, status: wa.status });
+    }
   } else {
     res.json({ qr: null, status: wa.status, phoneNumber: wa.phoneNumber });
   }
@@ -88,13 +159,31 @@ app.post("/api/setup/company", (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/setup/complete", (req, res) => {
+app.post("/api/setup/complete", async (req, res) => {
   setConfig("setup_complete", "true");
   setConfig("setup_completed_at", new Date().toISOString());
+
+  // Start credential proxy now that API key is saved
+  try {
+    await startCredentialProxy();
+  } catch (err) {
+    console.error("[setup] Credential proxy start failed:", err.message);
+  }
+
+  // Auto-connect WhatsApp if not already connected
+  if (whatsapp.getStatus().status !== "connected") {
+    whatsapp.connect().catch(err => {
+      console.error("[setup] WhatsApp connection failed:", err.message);
+    });
+  }
+
   res.json({ ok: true });
 });
 
-// --- Dashboard API ---
+// =====================
+// DASHBOARD API
+// =====================
+
 app.get("/api/status", (req, res) => {
   const wa = whatsapp.getStatus();
   res.json({
@@ -104,7 +193,6 @@ app.get("/api/status", (req, res) => {
     company: getCompany(),
     agents: getAgentStatuses(),
     costToday: getCostToday(),
-    messageCount: getMessages(1, 0).length > 0 ? true : false,
   });
 });
 
@@ -122,7 +210,10 @@ app.get("/api/containers", (req, res) => {
   res.json(getContainerInfo());
 });
 
-// --- Memory API ---
+// =====================
+// MEMORY API
+// =====================
+
 app.get("/api/company", (req, res) => {
   res.json(getCompany() || {});
 });
@@ -170,7 +261,59 @@ app.delete("/api/contacts/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Agent API ---
+// =====================
+// CHAT API
+// =====================
+
+const chatJobs = new Map();
+let jobCounter = 0;
+
+app.post("/api/chat/send", (req, res) => {
+  const { message } = req.body;
+  if (!message || message.length > 10000) {
+    return res.status(400).json({ error: "Message required (max 10000 chars)" });
+  }
+
+  const jobId = String(++jobCounter);
+  chatJobs.set(jobId, { status: "running", message });
+
+  // Save user message
+  saveMessage("user", "out", message, "You");
+
+  // Build context and send to Bear
+  const context = buildContractorContext();
+  const fullTask = context
+    ? `${context}\n\n---\nMessage from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`
+    : `Message from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`;
+
+  runContainer(fullTask, "bear")
+    .then(result => {
+      const response = result.result || "Sorry, I couldn't process that. Try again?";
+      saveMessage("bear", "in", response, "Bear");
+      chatJobs.set(jobId, { status: "done", result: response });
+      // Cleanup old jobs
+      if (chatJobs.size > 100) {
+        const keys = [...chatJobs.keys()];
+        for (let i = 0; i < keys.length - 50; i++) chatJobs.delete(keys[i]);
+      }
+    })
+    .catch(err => {
+      chatJobs.set(jobId, { status: "error", error: err.message });
+    });
+
+  res.json({ jobId });
+});
+
+app.get("/api/chat/job/:id", (req, res) => {
+  const job = chatJobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "Job not found" });
+  res.json(job);
+});
+
+// =====================
+// AGENT API
+// =====================
+
 app.post("/api/agent/task", async (req, res) => {
   const { task, agent } = req.body;
   if (!task || task.length > 10000) {
@@ -191,17 +334,10 @@ app.post("/api/agent/stop", (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Helpers ---
-function checkDocker() {
-  try {
-    execSync("docker info", { timeout: 5000, stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
+// =====================
+// WHATSAPP → BEAR PIPELINE
+// =====================
 
-// --- WhatsApp → Bear pipeline ---
 whatsapp.on("message", async (msg) => {
   const { text, sender, senderName } = msg;
 
@@ -229,13 +365,18 @@ whatsapp.on("message", async (msg) => {
   }
 });
 
-// --- Start everything ---
+// =====================
+// START
+// =====================
+
 async function start() {
-  // Start credential proxy
-  try {
-    await startCredentialProxy();
-  } catch (err) {
-    console.error("[startup] Credential proxy failed:", err.message);
+  // Only start credential proxy if setup is already complete
+  if (isSetupComplete()) {
+    try {
+      await startCredentialProxy();
+    } catch (err) {
+      console.error("[startup] Credential proxy failed:", err.message);
+    }
   }
 
   // Start Express server
@@ -245,7 +386,6 @@ async function start() {
       console.log("  Setup required — open the URL above to get started.\n");
     } else {
       console.log("  Dashboard is live. WhatsApp connecting...\n");
-      // Auto-connect WhatsApp if setup is complete
       whatsapp.connect().catch(err => {
         console.error("[startup] WhatsApp connection failed:", err.message);
       });

@@ -1,13 +1,16 @@
 {
   "name": "builderclaw",
   "version": "1.0.0",
-  "description": "Your AI back office. Free forever.",
+  "description": "AI back office for contractors. Free forever.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "electron/main.cjs",
   "scripts": {
-    "start": "node src/index.js",
-    "setup": "node src/index.js --setup",
-    "dev": "node --watch src/index.js"
+    "start": "electron .",
+    "server": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "build": "npm run rebuild && electron-builder --mac",
+    "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
+    "postinstall": "npx @electron/rebuild -f -w better-sqlite3 2>/dev/null || true"
   },
   "keywords": ["construction", "ai", "whatsapp", "contractor", "back-office"],
   "author": "Dove & Bear Inc.",
@@ -18,5 +21,36 @@
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
     "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "@electron/rebuild": "^3.7.1"
+  },
+  "build": {
+    "appId": "com.doveandbear.builderclaw",
+    "productName": "BuilderClaw",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.business"
+    },
+    "dmg": {
+      "title": "BuilderClaw",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "extraResources": [
+      "Dockerfile"
+    ]
   }
 }

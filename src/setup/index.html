@@ -7,282 +7,311 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
       background: #f5f3ef;
       color: #2d2d2d;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      -webkit-font-smoothing: antialiased;
     }
     .wizard {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      max-width: 520px;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+      max-width: 560px;
       width: 100%;
-      padding: 48px 40px;
+      padding: 52px 48px;
       margin: 20px;
+      position: relative;
     }
-    .logo {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .logo h1 {
-      font-size: 28px;
-      font-weight: 700;
-      color: #1a1a1a;
-    }
-    .logo p {
-      color: #6b6b6b;
-      margin-top: 4px;
-      font-size: 14px;
-    }
-    .step { display: none; }
+    .step { display: none; animation: fadeIn 0.3s ease; }
     .step.active { display: block; }
-    .step h2 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .step p.desc {
-      color: #6b6b6b;
-      font-size: 14px;
-      margin-bottom: 24px;
-      line-height: 1.5;
-    }
-    .checklist {
-      list-style: none;
-      margin-bottom: 24px;
-    }
-    .checklist li {
-      padding: 12px 16px;
-      border: 1px solid #e5e2dc;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
-    }
-    .checklist li .icon {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Progress */
+    .progress {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      flex-shrink: 0;
+      gap: 6px;
+      margin-bottom: 40px;
     }
-    .checklist li .icon.ok { background: #d4edda; color: #155724; }
-    .checklist li .icon.pending { background: #e5e2dc; color: #6b6b6b; }
-    .checklist li .icon.fail { background: #f8d7da; color: #721c24; }
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #4a4a4a;
-      margin-bottom: 6px;
+    .progress .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #e5e2dc; transition: all 0.3s;
     }
-    input, select, textarea {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid #e5e2dc;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      background: #faf9f7;
-      color: #2d2d2d;
-      margin-bottom: 16px;
-      outline: none;
-      transition: border 0.2s;
+    .progress .dot.active { background: #c9a87c; width: 24px; border-radius: 4px; }
+    .progress .dot.done { background: #7ab07a; }
+
+    /* Typography */
+    h1 { font-size: 32px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+    h2 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { color: #8e8e93; font-size: 15px; text-align: center; margin-bottom: 32px; }
+    .desc { color: #6b6b6b; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+    /* Inputs */
+    label { display: block; font-size: 13px; font-weight: 500; color: #4a4a4a; margin-bottom: 6px; }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%; padding: 12px 16px;
+      border: 1.5px solid #e5e2dc; border-radius: 10px;
+      font-size: 15px; font-family: inherit;
+      background: #faf9f7; color: #2d2d2d;
+      margin-bottom: 16px; outline: none; transition: border 0.2s;
     }
-    input:focus, select:focus, textarea:focus {
-      border-color: #c9a87c;
-    }
+    input:focus, select:focus, textarea:focus { border-color: #c9a87c; background: #fff; }
+    input[type="password"] { font-family: monospace; letter-spacing: 1px; }
+
+    /* Buttons */
     .btn {
-      display: inline-block;
-      padding: 12px 28px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 32px; border-radius: 12px; border: none;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; min-width: 120px;
     }
-    .btn-primary {
-      background: #c9a87c;
-      color: #fff;
-    }
-    .btn-primary:hover { background: #b8956a; }
-    .btn-primary:disabled {
-      background: #ddd;
-      color: #999;
-      cursor: not-allowed;
-    }
-    .btn-secondary {
-      background: transparent;
-      color: #6b6b6b;
-      border: 1px solid #e5e2dc;
-    }
+    .btn-primary { background: #c9a87c; color: #fff; }
+    .btn-primary:hover { background: #b8956a; transform: translateY(-1px); }
+    .btn-primary:disabled { background: #ddd; color: #aaa; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: transparent; color: #6b6b6b; border: 1.5px solid #e5e2dc; }
     .btn-secondary:hover { background: #f5f3ef; }
-    .btn-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 24px;
+    .btn-ghost { background: transparent; color: #c9a87c; border: none; padding: 8px 16px; font-size: 14px; }
+    .btn-ghost:hover { background: #faf9f7; }
+    .btn-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
+
+    /* Status cards */
+    .status-card {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 20px; border-radius: 12px;
+      background: #faf9f7; border: 1.5px solid #e5e2dc;
+      margin-bottom: 12px; transition: all 0.3s;
     }
-    .qr-box {
-      text-align: center;
-      padding: 24px;
-      background: #faf9f7;
-      border-radius: 12px;
+    .status-card.ok { border-color: #7ab07a; background: #f0f7f0; }
+    .status-card.fail { border-color: #e88; background: #fef5f5; }
+    .status-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .status-icon.ok { background: #d4edda; }
+    .status-icon.pending { background: #e5e2dc; }
+    .status-icon.fail { background: #f8d7da; }
+    .status-info { flex: 1; }
+    .status-title { font-size: 14px; font-weight: 600; }
+    .status-desc { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+
+    /* QR */
+    .qr-container {
+      text-align: center; padding: 32px;
+      background: #faf9f7; border-radius: 16px;
       margin-bottom: 24px;
     }
-    .qr-box img {
-      max-width: 256px;
-      border-radius: 8px;
-    }
-    .qr-box .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid #e5e2dc;
-      border-top-color: #c9a87c;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
+    .qr-container img { border-radius: 12px; max-width: 260px; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid #e5e2dc; border-top-color: #c9a87c;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin: 24px auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
+
+    /* Connected badge */
+    .connected-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 20px;
+      background: #d4edda; color: #155724;
+      font-weight: 600; font-size: 14px;
     }
-    .status-badge.connected { background: #d4edda; color: #155724; }
-    .status-badge.pending { background: #fff3cd; color: #856404; }
-    .status-badge.error { background: #f8d7da; color: #721c24; }
-    .progress-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 32px;
+
+    /* Success */
+    .success-circle {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, #7ab07a, #5a9a5a);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px; font-size: 36px; color: #fff;
     }
-    .progress-bar .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #e5e2dc;
-      transition: background 0.3s;
+
+    /* Code block */
+    .code-block {
+      background: #1a1a1a; color: #e5e2dc;
+      padding: 16px 20px; border-radius: 10px;
+      font-family: 'SF Mono', Monaco, monospace; font-size: 13px;
+      margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
     }
-    .progress-bar .dot.active { background: #c9a87c; }
-    .progress-bar .dot.done { background: #6b9e6b; }
-    .success-icon {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      background: #d4edda;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      margin: 0 auto 24px;
+    .code-block .copy-btn {
+      background: rgba(255,255,255,0.1); border: none; color: #aaa;
+      padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
     }
+    .code-block .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+    /* Inline link */
+    a { color: #c9a87c; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Test result */
+    .test-result {
+      padding: 10px 16px; border-radius: 8px; font-size: 13px;
+      margin-bottom: 16px; display: none;
+    }
+    .test-result.ok { display: block; background: #d4edda; color: #155724; }
+    .test-result.fail { display: block; background: #f8d7da; color: #721c24; }
+
+    /* Team list */
+    .team-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      margin-bottom: 24px;
+    }
+    .team-card {
+      padding: 14px 16px; border-radius: 10px;
+      background: #faf9f7; border: 1px solid #e5e2dc;
+    }
+    .team-card .name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .team-card .role { font-size: 12px; color: #8e8e93; }
   </style>
 </head>
 <body>
   <div class="wizard">
-    <div class="logo">
-      <h1>BuilderClaw</h1>
-      <p>AI Back Office for Contractors</p>
-    </div>
-
-    <div class="progress-bar" id="progressBar">
+    <div class="progress" id="progress">
       <div class="dot active"></div>
       <div class="dot"></div>
       <div class="dot"></div>
       <div class="dot"></div>
       <div class="dot"></div>
+      <div class="dot"></div>
     </div>
 
-    <!-- Step 1: Welcome -->
+    <!-- STEP 1: Welcome -->
     <div class="step active" id="step1">
-      <h2>Welcome</h2>
-      <p class="desc">
-        BuilderClaw gives your contracting business an AI back office — project management,
-        estimating, safety, and accounts — all through WhatsApp. Setup takes about 5 minutes.
+      <h1>BuilderClaw</h1>
+      <p class="subtitle">AI Back Office for Contractors</p>
+      <p class="desc" style="text-align:center;">
+        Get a full back office team — project management, estimating, safety, and accounts —
+        powered by AI and connected to your WhatsApp. Setup takes about 5 minutes.
       </p>
-      <p class="desc">You'll need:</p>
-      <ul class="checklist" id="prereqList">
-        <li>
-          <div class="icon pending" id="dockerIcon">?</div>
-          <span>Docker Desktop installed and running</span>
-        </li>
-        <li>
-          <div class="icon pending" id="claudeIcon">?</div>
-          <span>Claude subscription (any plan)</span>
-        </li>
-        <li>
-          <div class="icon ok">&#10003;</div>
-          <span>WhatsApp on your phone</span>
-        </li>
-      </ul>
-      <div class="btn-row">
-        <div></div>
-        <button class="btn btn-primary" id="startBtn" onclick="goStep(2)">Let's Go</button>
+      <div style="text-align:center; margin-top:40px;">
+        <button class="btn btn-primary" onclick="goStep(2)" style="padding:16px 48px; font-size:16px;">
+          Get Started
+        </button>
       </div>
     </div>
 
-    <!-- Step 2: Claude Auth -->
+    <!-- STEP 2: Docker -->
     <div class="step" id="step2">
-      <h2>Claude Authentication</h2>
+      <h2>Docker Desktop</h2>
       <p class="desc">
-        BuilderClaw runs on your Claude subscription. Open a terminal and run:
+        BuilderClaw uses Docker to run AI agents securely on your computer.
+        Each agent gets its own isolated workspace.
       </p>
-      <div style="background:#1a1a1a; color:#e5e2dc; padding:16px; border-radius:8px; font-family:monospace; font-size:13px; margin-bottom:16px; word-break:break-all;">
-        claude auth login
+
+      <div class="status-card" id="dockerCard">
+        <div class="status-icon pending" id="dockerIcon">🐳</div>
+        <div class="status-info">
+          <div class="status-title" id="dockerTitle">Checking for Docker...</div>
+          <div class="status-desc" id="dockerDesc">One moment</div>
+        </div>
       </div>
-      <p class="desc">
-        Once logged in, BuilderClaw will use your Claude session automatically. No API key needed.
-      </p>
-      <label>
-        <input type="checkbox" id="claudeAuth" onchange="checkClaudeAuth()">
-        I've logged into Claude CLI
-      </label>
+
+      <div id="dockerInstallGuide" style="display:none;">
+        <p class="desc" style="margin-top:16px;">
+          <strong>How to install:</strong>
+        </p>
+        <ol style="font-size:14px; color:#6b6b6b; line-height:2; padding-left:20px; margin-bottom:16px;">
+          <li>Click the download button below</li>
+          <li>Open the downloaded file and drag Docker to Applications</li>
+          <li>Open Docker Desktop and wait for it to start (whale icon in menu bar)</li>
+          <li>Come back here and click "Check Again"</li>
+        </ol>
+        <div style="display:flex; gap:8px;">
+          <a href="https://www.docker.com/products/docker-desktop/" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+            Download Docker Desktop
+          </a>
+          <button class="btn btn-secondary" onclick="checkDockerStatus()">Check Again</button>
+        </div>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="goStep(1)">Back</button>
-        <button class="btn btn-primary" id="claudeNext" disabled onclick="goStep(3)">Next</button>
+        <button class="btn btn-primary" id="dockerNext" disabled onclick="goStep(3)">Next</button>
       </div>
     </div>
 
-    <!-- Step 3: WhatsApp QR -->
+    <!-- STEP 3: Claude API Key -->
     <div class="step" id="step3">
-      <h2>Connect WhatsApp</h2>
+      <h2>Connect to Claude</h2>
       <p class="desc">
-        Scan this QR code with WhatsApp to connect your business number.
-        Open WhatsApp > Settings > Linked Devices > Link a Device.
+        BuilderClaw is powered by Claude AI. You'll need an API key from Anthropic.
+        Your key stays on your computer and is never shared.
       </p>
-      <div class="qr-box" id="qrBox">
-        <div class="spinner" id="qrSpinner"></div>
-        <p style="color:#6b6b6b; font-size:13px; margin-top:12px;" id="qrStatus">Generating QR code...</p>
+
+      <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
+        <strong>How to get your API key:</strong><br>
+        1. Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
+        2. Sign up or log in<br>
+        3. Click "API Keys" in the sidebar<br>
+        4. Click "Create Key" and copy it
       </div>
-      <div id="waConnected" style="display:none; text-align:center; margin-bottom:24px;">
-        <span class="status-badge connected">Connected</span>
-        <p style="margin-top:8px; font-size:14px;" id="waPhone"></p>
-      </div>
+
+      <label for="apiKeyInput">API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="onApiKeyInput()">
+
+      <div class="test-result" id="testResult"></div>
+
+      <button class="btn btn-secondary" id="testBtn" onclick="testApiKey()" disabled style="margin-bottom:8px;">
+        Test Connection
+      </button>
+
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="goStep(2)">Back</button>
-        <button class="btn btn-primary" id="waNext" disabled onclick="goStep(4)">Next</button>
+        <button class="btn btn-primary" id="claudeNext" disabled onclick="saveKeyAndNext()">Next</button>
       </div>
     </div>
 
-    <!-- Step 4: Company Info -->
+    <!-- STEP 4: WhatsApp -->
     <div class="step" id="step4">
-      <h2>Your Business</h2>
-      <p class="desc">Tell Bear about your company so responses are relevant to your trade and location.</p>
+      <h2>Connect WhatsApp</h2>
+      <p class="desc">
+        Link your WhatsApp so you can message Bear directly from your phone.
+        You can use your personal or business number.
+      </p>
 
-      <label for="compName">Company Name *</label>
-      <input id="compName" placeholder="e.g. Smith Plumbing LLC">
+      <div class="qr-container" id="qrContainer">
+        <div class="spinner" id="qrSpinner"></div>
+        <p style="color:#8e8e93; font-size:13px; margin-top:12px;" id="qrLabel">Generating QR code...</p>
+      </div>
 
-      <label for="compTrade">Trade *</label>
+      <div id="waConnected" style="display:none; text-align:center; margin-bottom:24px;">
+        <div class="connected-badge">&#10003; WhatsApp Connected</div>
+        <p style="margin-top:8px; font-size:14px; color:#6b6b6b;" id="waPhone"></p>
+      </div>
+
+      <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:16px; font-size:13px; line-height:1.8;">
+        <strong>To scan:</strong><br>
+        1. Open WhatsApp on your phone<br>
+        2. Go to Settings → Linked Devices<br>
+        3. Tap "Link a Device"<br>
+        4. Point your camera at the QR code above
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(3)">Back</button>
+        <div>
+          <button class="btn btn-ghost" onclick="goStep(5)">Skip for now</button>
+          <button class="btn btn-primary" id="waNext" disabled onclick="goStep(5)">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: Company -->
+    <div class="step" id="step5">
+      <h2>About Your Business</h2>
+      <p class="desc">
+        This helps Bear give answers specific to your trade and location.
+      </p>
+
+      <label for="compName">Company Name</label>
+      <input type="text" id="compName" placeholder="e.g. Smith Plumbing LLC">
+
+      <label for="compTrade">Trade</label>
       <select id="compTrade">
         <option value="">Select your trade...</option>
         <option>General Contractor</option>
@@ -299,10 +328,12 @@
         <option>Drywall</option>
         <option>Masonry</option>
         <option>Welding</option>
+        <option>Solar</option>
+        <option>Fire Protection</option>
         <option>Other</option>
       </select>
 
-      <label for="compState">State *</label>
+      <label for="compState">State</label>
       <select id="compState">
         <option value="">Select state...</option>
         <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
@@ -322,7 +353,7 @@
 
       <label for="compSize">Team Size</label>
       <select id="compSize">
-        <option value="">Select...</option>
+        <option value="">How big is your crew?</option>
         <option>Just me</option>
         <option>2-5</option>
         <option>6-15</option>
@@ -330,36 +361,47 @@
         <option>50+</option>
       </select>
 
-      <label for="compPain">Biggest pain point?</label>
-      <input id="compPain" placeholder="e.g. Keeping track of change orders">
-
       <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(3)">Back</button>
-        <button class="btn btn-primary" onclick="saveCompany()">Next</button>
+        <button class="btn btn-secondary" onclick="goStep(4)">Back</button>
+        <button class="btn btn-primary" onclick="saveCompany()">Finish Setup</button>
       </div>
     </div>
 
-    <!-- Step 5: Done -->
-    <div class="step" id="step5">
-      <div class="success-icon">&#10003;</div>
+    <!-- STEP 6: Done -->
+    <div class="step" id="step6">
+      <div class="success-circle">&#10003;</div>
       <h2 style="text-align:center;">You're All Set</h2>
       <p class="desc" style="text-align:center;">
-        Bear is standing by on WhatsApp. Send a message to test it out — try asking
-        "What OSHA standards apply to my trade?" or "Help me write a change order."
+        Bear and your AI team are ready. Send a message from the dashboard or WhatsApp to get started.
       </p>
-      <div style="background:#faf9f7; border-radius:8px; padding:16px; margin-bottom:24px;">
-        <p style="font-size:13px; color:#6b6b6b; margin-bottom:8px;">Your team:</p>
-        <ul style="list-style:none; font-size:14px; line-height:2;">
-          <li><strong>Bear</strong> — Your main point of contact</li>
-          <li><strong>PM</strong> — Project management & scheduling</li>
-          <li><strong>Estimator</strong> — Takeoffs & cost estimates</li>
-          <li><strong>Accounts</strong> — Billing & invoicing</li>
-          <li><strong>Safety</strong> — OSHA compliance & toolbox talks</li>
-        </ul>
+
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="name">🐻 Bear</div>
+          <div class="role">Your main point of contact</div>
+        </div>
+        <div class="team-card">
+          <div class="name">📋 PM</div>
+          <div class="role">Project management</div>
+        </div>
+        <div class="team-card">
+          <div class="name">📐 Estimator</div>
+          <div class="role">Takeoffs & estimates</div>
+        </div>
+        <div class="team-card">
+          <div class="name">💰 Accounts</div>
+          <div class="role">Billing & invoicing</div>
+        </div>
+        <div class="team-card">
+          <div class="name">🦺 Safety</div>
+          <div class="role">OSHA & compliance</div>
+        </div>
       </div>
-      <div class="btn-row">
-        <div></div>
-        <button class="btn btn-primary" onclick="finishSetup()">Open Dashboard</button>
+
+      <div style="text-align:center;">
+        <button class="btn btn-primary" onclick="finishSetup()" style="padding:16px 48px; font-size:16px;">
+          Open BuilderClaw
+        </button>
       </div>
     </div>
   </div>
@@ -367,48 +409,119 @@
   <script>
     let currentStep = 1;
     let waPolling = null;
+    let apiKeyVerified = false;
 
+    // --- Navigation ---
     function goStep(n) {
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       document.getElementById('step' + n).classList.add('active');
       currentStep = n;
+      updateProgress(n);
+      if (n === 2) checkDockerStatus();
+      if (n === 4) startWhatsApp();
+      if (n !== 4 && waPolling) { clearInterval(waPolling); waPolling = null; }
+    }
 
-      // Update progress dots
-      document.querySelectorAll('.progress-bar .dot').forEach((d, i) => {
+    function updateProgress(n) {
+      const dots = document.querySelectorAll('.progress .dot');
+      dots.forEach((d, i) => {
         d.className = 'dot';
         if (i + 1 < n) d.classList.add('done');
         else if (i + 1 === n) d.classList.add('active');
       });
-
-      if (n === 3) startWhatsApp();
-      if (n !== 3 && waPolling) { clearInterval(waPolling); waPolling = null; }
     }
 
-    // Step 1: Check prereqs
-    async function checkPrereqs() {
+    // --- Step 2: Docker ---
+    async function checkDockerStatus() {
+      const card = document.getElementById('dockerCard');
+      const icon = document.getElementById('dockerIcon');
+      const title = document.getElementById('dockerTitle');
+      const desc = document.getElementById('dockerDesc');
+      const guide = document.getElementById('dockerInstallGuide');
+      const next = document.getElementById('dockerNext');
+
       try {
-        const r = await fetch('/api/setup/status');
+        const r = await fetch('/api/setup/check-docker');
         const d = await r.json();
-        const dockerEl = document.getElementById('dockerIcon');
-        const claudeEl = document.getElementById('claudeIcon');
-        if (d.hasDocker) { dockerEl.className = 'icon ok'; dockerEl.innerHTML = '&#10003;'; }
-        else { dockerEl.className = 'icon fail'; dockerEl.innerHTML = '&#10007;'; }
-        if (d.hasClaude) { claudeEl.className = 'icon ok'; claudeEl.innerHTML = '&#10003;'; }
-
-        if (d.setupComplete) { window.location.href = '/'; }
-        if (d.whatsapp === 'connected') {
-          document.getElementById('waNext').disabled = false;
+        if (d.installed) {
+          card.className = 'status-card ok';
+          icon.className = 'status-icon ok';
+          icon.textContent = '✓';
+          title.textContent = 'Docker Desktop is running';
+          desc.textContent = 'Ready to go';
+          guide.style.display = 'none';
+          next.disabled = false;
+        } else {
+          card.className = 'status-card fail';
+          icon.className = 'status-icon fail';
+          icon.textContent = '✗';
+          title.textContent = 'Docker Desktop not found';
+          desc.textContent = 'Required to run AI agents';
+          guide.style.display = 'block';
+          next.disabled = true;
         }
+      } catch {
+        title.textContent = 'Could not check Docker status';
+        desc.textContent = 'Make sure the app is running';
+      }
+    }
+
+    // --- Step 3: API Key ---
+    function onApiKeyInput() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      document.getElementById('testBtn').disabled = key.length < 10;
+      document.getElementById('claudeNext').disabled = true;
+      apiKeyVerified = false;
+      document.getElementById('testResult').className = 'test-result';
+    }
+
+    async function testApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      const result = document.getElementById('testResult');
+      const btn = document.getElementById('testBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Testing...';
+      result.className = 'test-result';
+
+      try {
+        const r = await fetch('/api/setup/test-claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key }),
+        });
+        const d = await r.json();
+        if (d.valid) {
+          result.className = 'test-result ok';
+          result.textContent = '✓ Connected to Claude successfully!';
+          document.getElementById('claudeNext').disabled = false;
+          apiKeyVerified = true;
+        } else {
+          result.className = 'test-result fail';
+          result.textContent = '✗ ' + (d.error || 'Invalid API key');
+        }
+      } catch (err) {
+        result.className = 'test-result fail';
+        result.textContent = '✗ Connection failed. Check your internet.';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Test Connection';
+    }
+
+    async function saveKeyAndNext() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      try {
+        await fetch('/api/setup/save-api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key }),
+        });
       } catch {}
-    }
-    checkPrereqs();
-
-    // Step 2: Claude auth checkbox
-    function checkClaudeAuth() {
-      document.getElementById('claudeNext').disabled = !document.getElementById('claudeAuth').checked;
+      goStep(4);
     }
 
-    // Step 3: WhatsApp QR
+    // --- Step 4: WhatsApp ---
     async function startWhatsApp() {
       try { await fetch('/api/setup/connect-whatsapp', { method: 'POST' }); } catch {}
       pollQR();
@@ -419,47 +532,35 @@
       try {
         const r = await fetch('/api/setup/whatsapp-qr');
         const d = await r.json();
-        const box = document.getElementById('qrBox');
-        const spinner = document.getElementById('qrSpinner');
-        const status = document.getElementById('qrStatus');
+        const container = document.getElementById('qrContainer');
+        const connected = document.getElementById('waConnected');
 
         if (d.status === 'connected') {
-          box.style.display = 'none';
-          document.getElementById('waConnected').style.display = 'block';
+          container.style.display = 'none';
+          connected.style.display = 'block';
           document.getElementById('waPhone').textContent = d.phoneNumber || '';
           document.getElementById('waNext').disabled = false;
           if (waPolling) { clearInterval(waPolling); waPolling = null; }
         } else if (d.qr) {
-          // Generate QR as image using canvas
-          spinner.style.display = 'none';
-          status.textContent = 'Scan with WhatsApp';
-          if (!box.querySelector('canvas')) {
-            const img = document.createElement('div');
-            img.id = 'qrRender';
-            img.style.cssText = 'font-family:monospace;font-size:4px;line-height:4px;letter-spacing:0;text-align:center;';
-            box.insertBefore(img, status);
+          document.getElementById('qrSpinner').style.display = 'none';
+          document.getElementById('qrLabel').textContent = 'Scan with WhatsApp';
+          let img = container.querySelector('img');
+          if (!img) {
+            img = document.createElement('img');
+            container.insertBefore(img, document.getElementById('qrLabel'));
           }
-          renderQR(d.qr);
+          img.src = d.qr;
+          img.alt = 'WhatsApp QR Code';
         }
       } catch {}
     }
 
-    // Simple text-based QR render (QR string from Baileys is a data URL or text)
-    function renderQR(qr) {
-      const el = document.getElementById('qrRender');
-      if (!el) return;
-      // QR from Baileys is a string that can be rendered via qrcode library on backend
-      // For now show a prompt to check terminal
-      el.innerHTML = '<p style="font-size:14px;font-family:sans-serif;color:#6b6b6b;padding:20px;">QR code generated.<br>If it doesn\'t appear here, check your terminal.</p>';
-    }
-
-    // Step 4: Save company
+    // --- Step 5: Company ---
     async function saveCompany() {
       const name = document.getElementById('compName').value.trim();
       const trade = document.getElementById('compTrade').value;
       const state = document.getElementById('compState').value;
       const team_size = document.getElementById('compSize').value;
-      const pain_point = document.getElementById('compPain').value.trim();
 
       if (!name || !trade || !state) {
         alert('Please fill in company name, trade, and state.');
@@ -470,19 +571,28 @@
         await fetch('/api/setup/company', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, trade, state, team_size, pain_point })
+          body: JSON.stringify({ name, trade, state, team_size }),
         });
-        goStep(5);
-      } catch (err) {
-        alert('Error saving company info. Try again.');
+        goStep(6);
+      } catch {
+        alert('Error saving. Please try again.');
       }
     }
 
-    // Step 5: Finish
+    // --- Step 6: Finish ---
     async function finishSetup() {
       await fetch('/api/setup/complete', { method: 'POST' });
       window.location.href = '/';
     }
+
+    // --- Init ---
+    (async () => {
+      try {
+        const r = await fetch('/api/setup/status');
+        const d = await r.json();
+        if (d.setupComplete) window.location.href = '/';
+      } catch {}
+    })();
   </script>
 </body>
 </html>
