@@ -5,10 +5,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "data");
-fs.mkdirSync(DATA_DIR, { recursive: true });
+import { DATA_DIR } from "../data-dir.js";
 
 const db = new Database(path.join(DATA_DIR, "builderclaw.db"));
 db.pragma("journal_mode = WAL");

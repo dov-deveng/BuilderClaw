@@ -11,15 +11,16 @@ import QRCode from "qrcode";
 import { startCredentialProxy } from "./agents/credential-proxy.js";
 import { runContainer, stopContainer, getAgentStatuses, getContainerInfo, shutdownAll } from "./agents/container-runner.js";
 import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext } from "./memory/db.js";
+import { getEnvPath } from "./data-dir.js";
 import whatsapp from "./whatsapp/client.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.join(__dirname, "..");
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "dashboard")));
+app.use(express.static(path.join(__dirname, "dashboard"), { index: false }));
+app.use("/assets", express.static(path.join(__dirname, "dashboard", "assets")));
 
 // No-cache on HTML so edits show without restart
 app.use((req, res, next) => {
@@ -35,6 +36,20 @@ function isSetupComplete() {
 }
 
 function checkDocker() {
+  // GUI apps on macOS don't inherit terminal PATH, so check common Docker install locations
+  const dockerPaths = [
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "/usr/bin/docker",
+    "/Applications/Docker.app/Contents/Resources/bin/docker",
+  ];
+  for (const p of dockerPaths) {
+    try {
+      execSync(`"${p}" info`, { timeout: 5000, stdio: "pipe" });
+      return true;
+    } catch {}
+  }
+  // Fallback: try bare command in case PATH works
   try {
     execSync("docker info", { timeout: 5000, stdio: "pipe" });
     return true;
@@ -83,7 +98,7 @@ app.post("/api/setup/save-api-key", (req, res) => {
   }
 
   // Save to .env file
-  const envPath = path.join(PROJECT_ROOT, ".env");
+  const envPath = getEnvPath();
   let content = "";
   if (fs.existsSync(envPath)) {
     content = fs.readFileSync(envPath, "utf-8");
@@ -96,6 +111,85 @@ app.post("/api/setup/save-api-key", (req, res) => {
   setConfig("anthropic_api_key", "configured");
 
   res.json({ ok: true });
+});
+
+// --- OAuth login flow (Claude subscription) ---
+let oauthState = { status: "idle" }; // idle, started, success, error
+
+app.post("/api/setup/oauth-login", async (req, res) => {
+  oauthState = { status: "started" };
+
+  // Use bundled Claude CLI — no system install needed
+  const home = process.env.HOME || "";
+  const bundledCli = path.join(__dirname, "..", "node_modules", "@anthropic-ai", "claude-code", "cli.js");
+  if (!fs.existsSync(bundledCli)) {
+    oauthState = { status: "error", error: "Claude CLI not found in app bundle. Reinstall BuilderClaw." };
+    return res.json({ status: "error", error: oauthState.error });
+  }
+
+  oauthState = { status: "started" };
+  res.json({ status: "started" });
+
+  // Run claude login in background — it opens a browser
+  const { spawn } = await import("child_process");
+  const fullPath = [home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":");
+  const child = spawn(process.execPath, [bundledCli, "login"], {
+    stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, HOME: home, PATH: fullPath, ELECTRON_RUN_AS_NODE: "1" },
+  });
+
+  let output = "";
+  child.stdout.on("data", (d) => { output += d.toString(); });
+  child.stderr.on("data", (d) => { output += d.toString(); });
+
+  child.on("close", (code) => {
+    if (code === 0) {
+      // Claude Code stores OAuth token in ~/.claude/ — find it
+      const claudeDir = path.join(process.env.HOME || "", ".claude");
+      const credFiles = [
+        path.join(claudeDir, ".credentials.json"),
+        path.join(claudeDir, "credentials.json"),
+      ];
+      let token = null;
+      for (const f of credFiles) {
+        try {
+          const creds = JSON.parse(fs.readFileSync(f, "utf-8"));
+          token = creds.oauthToken || creds.claudeAiOauth?.accessToken || creds.accessToken;
+          if (token) break;
+        } catch {}
+      }
+
+      if (token) {
+        // Save OAuth token to .env
+        const envPath = getEnvPath();
+        let content = "";
+        if (fs.existsSync(envPath)) {
+          content = fs.readFileSync(envPath, "utf-8");
+          content = content.split("\n").filter(l => !l.startsWith("CLAUDE_CODE_OAUTH_TOKEN=") && !l.startsWith("ANTHROPIC_API_KEY=")).join("\n");
+        }
+        content = content.trim() + "\nCLAUDE_CODE_OAUTH_TOKEN=" + token + "\n";
+        fs.writeFileSync(envPath, content);
+        setConfig("anthropic_api_key", "oauth");
+        oauthState = { status: "success" };
+      } else {
+        oauthState = { status: "error", error: "Login succeeded but couldn't find token. Try the API key option instead." };
+      }
+    } else {
+      oauthState = { status: "error", error: "Login failed (exit " + code + "). Try the API key option instead." };
+    }
+  });
+
+  // Timeout after 2 minutes
+  setTimeout(() => {
+    if (oauthState.status === "started") {
+      oauthState = { status: "error", error: "Login timed out. Try again or use the API key option." };
+      try { child.kill(); } catch {}
+    }
+  }, 120000);
+});
+
+app.get("/api/setup/oauth-status", (req, res) => {
+  res.json(oauthState);
 });
 
 app.post("/api/setup/test-claude", async (req, res) => {
@@ -341,8 +435,14 @@ app.post("/api/agent/stop", (req, res) => {
 whatsapp.on("message", async (msg) => {
   const { text, sender, senderName } = msg;
 
-  // Save incoming message
+  // Save incoming message always (for history)
   saveMessage("incoming", "in", text, senderName);
+
+  // Don't route to Bear if setup isn't complete — no API key means containers will crash
+  if (!isSetupComplete()) {
+    console.log(`[pipeline] Skipping Bear — setup not complete. Message from ${senderName}: ${text.slice(0, 60)}`);
+    return;
+  }
 
   // Build context and send to Bear
   const context = buildContractorContext();

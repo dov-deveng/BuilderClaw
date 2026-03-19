@@ -10,44 +10,65 @@
     "dev": "node --watch src/index.js",
     "build": "npm run rebuild && electron-builder --mac",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
-    "postinstall": "npx @electron/rebuild -f -w better-sqlite3 2>/dev/null || true"
+    "postinstall": "echo 'Run npm run build to create the macOS app'"
   },
-  "keywords": ["construction", "ai", "whatsapp", "contractor", "back-office"],
+  "keywords": [
+    "construction",
+    "ai",
+    "whatsapp",
+    "contractor",
+    "back-office"
+  ],
   "author": "Dove & Bear Inc.",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/claude-code": "^2.1.79",
     "@whiskeysockets/baileys": "^6.7.16",
     "better-sqlite3": "^11.8.1",
     "express": "^4.21.2",
-    "qrcode": "^1.5.4",
-    "pino": "^9.6.0"
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
-    "@electron/rebuild": "^3.7.1"
+    "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "com.doveandbear.builderclaw",
     "productName": "BuilderClaw",
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.business"
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns"
     },
     "dmg": {
-      "title": "BuilderClaw",
+      "title": "Install BuilderClaw",
+      "icon": "build/icon.icns",
+      "iconSize": 120,
+      "window": {
+        "width": 540,
+        "height": 380
+      },
       "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 150,
+          "y": 185
+        },
+        {
+          "x": 390,
+          "y": 185,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
+    "asar": false,
     "files": [
       "electron/**/*",
       "src/**/*",
+      "node_modules/**/*",
       "package.json"
-    ],
-    "asarUnpack": [
-      "node_modules/better-sqlite3/**/*"
     ],
     "extraResources": [
       "Dockerfile"

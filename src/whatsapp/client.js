@@ -7,11 +7,10 @@ import { Boom } from "@hapi/boom";
 import pino from "pino";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import { EventEmitter } from "events";
+import { DATA_DIR } from "../data-dir.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const AUTH_DIR = path.join(__dirname, "..", "..", "data", "auth_info");
+const AUTH_DIR = path.join(DATA_DIR, "auth_info");
 
 class WhatsAppClient extends EventEmitter {
   constructor() {

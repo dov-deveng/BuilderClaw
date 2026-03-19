@@ -1,62 +1,48 @@
 /**
  * BuilderClaw — Electron Main Process
- * Launches the Express server and opens the app window.
+ * Runs the Express server in-process and opens the app window.
  * No terminal required — everything runs inside the app.
  */
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
-const { fork } = require('child_process');
 const http = require('http');
+const { pathToFileURL } = require('url');
 
 const SERVER_PORT = 3000;
 let mainWindow = null;
-let serverProcess = null;
 
-// --- Server Management ---
-function startServer() {
+// --- Start server in-process via dynamic import ---
+async function startServer() {
   const serverPath = path.join(__dirname, '..', 'src', 'index.js');
+  console.log('[app] Loading server from:', serverPath);
 
-  serverProcess = fork(serverPath, [], {
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: '1',
-      BUILDERCLAW_DATA_DIR: path.join(app.getPath('userData'), 'data'),
-    },
-    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-  });
+  try {
+    // Dynamic import of the ESM server module
+    // This runs start() which calls app.listen()
+    await import(pathToFileURL(serverPath).href);
+    console.log('[app] Server module loaded');
+  } catch (err) {
+    console.error('[app] Server load error:', err.message);
+    console.error(err.stack);
+  }
 
-  serverProcess.stdout.on('data', (d) => {
-    console.log('[server]', d.toString().trim());
-  });
-
-  serverProcess.stderr.on('data', (d) => {
-    console.error('[server]', d.toString().trim());
-  });
-
-  serverProcess.on('error', (err) => {
-    console.error('[server] Process error:', err.message);
-  });
-
-  serverProcess.on('exit', (code) => {
-    console.log('[server] Exited with code:', code);
-    serverProcess = null;
-  });
-
+  // Wait for Express to be listening
   return waitForServer(SERVER_PORT);
 }
 
-function waitForServer(port, maxRetries = 40) {
-  return new Promise((resolve, reject) => {
+function waitForServer(port, maxRetries = 60) {
+  return new Promise((resolve) => {
     let attempt = 0;
     const check = () => {
       const req = http.get(`http://localhost:${port}/api/setup/status`, (res) => {
         res.resume();
+        console.log('[app] Server is ready');
         resolve();
       });
       req.on('error', () => {
         attempt++;
         if (attempt >= maxRetries) {
-          // Even if health check fails, open the window — server might be slow
+          console.log('[app] Server wait timed out, opening window anyway');
           resolve();
         } else {
           setTimeout(check, 500);
@@ -97,9 +83,17 @@ function createWindow() {
     mainWindow.show();
   });
 
+  // Retry if server wasn't ready yet
+  mainWindow.webContents.on('did-fail-load', () => {
+    console.log('[app] Page load failed, retrying in 2s...');
+    setTimeout(() => {
+      if (mainWindow) mainWindow.loadURL(`http://localhost:${SERVER_PORT}`);
+    }, 2000);
+  });
+
   // Open external links in system browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http')) {
+    if (url.startsWith('http') && !url.includes('localhost')) {
       shell.openExternal(url);
       return { action: 'deny' };
     }
@@ -113,12 +107,7 @@ function createWindow() {
 
 // --- App Lifecycle ---
 app.whenReady().then(async () => {
-  try {
-    await startServer();
-  } catch (err) {
-    console.error('[app] Failed to start server:', err.message);
-  }
-
+  await startServer();
   createWindow();
 
   app.on('activate', () => {
@@ -130,18 +119,6 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    cleanup();
     app.quit();
   }
 });
-
-app.on('before-quit', cleanup);
-
-function cleanup() {
-  if (serverProcess && !serverProcess.killed) {
-    try {
-      serverProcess.kill('SIGTERM');
-    } catch {}
-    serverProcess = null;
-  }
-}

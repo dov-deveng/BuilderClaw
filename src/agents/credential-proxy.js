@@ -13,15 +13,12 @@
  */
 import { createServer } from "http";
 import { request as httpsRequest } from "https";
+import { execSync } from "child_process";
 import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.join(__dirname, "..", "..");
+import { getEnvPath } from "../data-dir.js";
 
 function readSecrets() {
-  const envFile = path.join(PROJECT_ROOT, ".env");
+  const envFile = getEnvPath();
   const result = {};
   if (!fs.existsSync(envFile)) return result;
   const content = fs.readFileSync(envFile, "utf-8");
@@ -49,10 +46,26 @@ export function detectAuthMode() {
   return "oauth";
 }
 
+let proxyServer = null;
+
+export function stopCredentialProxy() {
+  if (proxyServer) {
+    try { proxyServer.close(); } catch {}
+    proxyServer = null;
+  }
+}
+
 export function startCredentialProxy(port = 3001, host = "127.0.0.1") {
+  // Kill any existing proxy first
+  stopCredentialProxy();
+
   const secrets = readSecrets();
   const authMode = detectAuthMode();
   const oauthToken = secrets.CLAUDE_CODE_OAUTH_TOKEN || secrets.ANTHROPIC_AUTH_TOKEN;
+
+  if (!secrets.ANTHROPIC_API_KEY && !oauthToken) {
+    console.warn("[credential-proxy] No API key or OAuth token found in .env — proxy won't inject credentials");
+  }
 
   return new Promise((resolve, reject) => {
     const server = createServer((req, res) => {
@@ -106,10 +119,29 @@ export function startCredentialProxy(port = 3001, host = "127.0.0.1") {
     });
 
     server.listen(port, host, () => {
+      proxyServer = server;
       console.log(`[credential-proxy] Started on ${host}:${port} (mode: ${authMode})`);
       resolve(server);
     });
 
-    server.on("error", reject);
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.warn(`[credential-proxy] Port ${port} in use, retrying...`);
+        // Try to kill whatever's on the port and retry once
+        try {
+          execSync(`lsof -ti :${port} | xargs kill -9 2>/dev/null || true`, { timeout: 3000 });
+        } catch {}
+        setTimeout(() => {
+          server.listen(port, host, () => {
+            proxyServer = server;
+            console.log(`[credential-proxy] Started on ${host}:${port} (mode: ${authMode}) [retry]`);
+            resolve(server);
+          });
+          server.on("error", reject);
+        }, 1000);
+      } else {
+        reject(err);
+      }
+    });
   });
 }

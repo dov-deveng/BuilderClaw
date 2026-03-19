@@ -182,6 +182,7 @@
 
     <!-- STEP 1: Welcome -->
     <div class="step active" id="step1">
+      <img src="/assets/claw-mascot.png" alt="BuilderClaw" style="width:80px;height:80px;margin:0 auto 16px;display:block;">
       <h1>BuilderClaw</h1>
       <p class="subtitle">AI Back Office for Contractors</p>
       <p class="desc" style="text-align:center;">
@@ -235,30 +236,57 @@
       </div>
     </div>
 
-    <!-- STEP 3: Claude API Key -->
+    <!-- STEP 3: Connect to Claude -->
     <div class="step" id="step3">
       <h2>Connect to Claude</h2>
       <p class="desc">
-        BuilderClaw is powered by Claude AI. You'll need an API key from Anthropic.
-        Your key stays on your computer and is never shared.
+        BuilderClaw is powered by Claude AI. Choose how to connect.
+        Your credentials stay on your computer and are never shared.
       </p>
 
-      <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
-        <strong>How to get your API key:</strong><br>
-        1. Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
-        2. Sign up or log in<br>
-        3. Click "API Keys" in the sidebar<br>
-        4. Click "Create Key" and copy it
+      <!-- Auth method toggle -->
+      <div style="display:flex; gap:8px; margin-bottom:20px;">
+        <button class="btn" id="authToggleOauth" onclick="setAuthMode('oauth')"
+          style="flex:1; padding:14px; border:2px solid #c9a87c; background:#faf5ee; font-size:13px; font-weight:600; border-radius:10px; cursor:pointer;">
+          Claude Subscription<br><span style="font-weight:400; font-size:11px; color:#8e8e93;">Recommended — uses your existing plan</span>
+        </button>
+        <button class="btn" id="authToggleApi" onclick="setAuthMode('apikey')"
+          style="flex:1; padding:14px; border:2px solid #e5e2dc; background:#fff; font-size:13px; font-weight:600; border-radius:10px; cursor:pointer;">
+          API Key<br><span style="font-weight:400; font-size:11px; color:#8e8e93;">Pay-as-you-go from console.anthropic.com</span>
+        </button>
       </div>
 
-      <label for="apiKeyInput">API Key</label>
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="onApiKeyInput()">
+      <!-- OAuth flow -->
+      <div id="authOauth">
+        <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
+          <strong>How it works:</strong><br>
+          1. Click "Log in with Claude" below<br>
+          2. A browser window will open<br>
+          3. Sign in with your Anthropic account<br>
+          4. You'll be redirected back automatically
+        </div>
+        <button class="btn btn-primary" id="oauthLoginBtn" onclick="startOAuthLogin()" style="width:100%; padding:14px; font-size:15px; margin-bottom:8px;">
+          Log in with Claude
+        </button>
+        <div class="test-result" id="oauthResult"></div>
+      </div>
 
-      <div class="test-result" id="testResult"></div>
-
-      <button class="btn btn-secondary" id="testBtn" onclick="testApiKey()" disabled style="margin-bottom:8px;">
-        Test Connection
-      </button>
+      <!-- API Key flow -->
+      <div id="authApikey" style="display:none;">
+        <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
+          <strong>How to get your API key:</strong><br>
+          1. Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
+          2. Sign up or log in<br>
+          3. Click "API Keys" in the sidebar<br>
+          4. Click "Create Key" and copy it
+        </div>
+        <label for="apiKeyInput">API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="onApiKeyInput()">
+        <div class="test-result" id="testResult"></div>
+        <button class="btn btn-secondary" id="testBtn" onclick="testApiKey()" disabled style="margin-bottom:8px;">
+          Test Connection
+        </button>
+      </div>
 
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="goStep(2)">Back</button>
@@ -377,7 +405,7 @@
 
       <div class="team-grid">
         <div class="team-card">
-          <div class="name">🐻 Bear</div>
+          <div class="name"><img src="/assets/claw-mascot.png" alt="Claw" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;"> Claw</div>
           <div class="role">Your main point of contact</div>
         </div>
         <div class="team-card">
@@ -466,7 +494,91 @@
       }
     }
 
-    // --- Step 3: API Key ---
+    // --- Step 3: Auth Mode ---
+    let authMode = 'oauth'; // default to subscription
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      document.getElementById('authOauth').style.display = mode === 'oauth' ? 'block' : 'none';
+      document.getElementById('authApikey').style.display = mode === 'apikey' ? 'block' : 'none';
+      document.getElementById('authToggleOauth').style.borderColor = mode === 'oauth' ? '#c9a87c' : '#e5e2dc';
+      document.getElementById('authToggleOauth').style.background = mode === 'oauth' ? '#faf5ee' : '#fff';
+      document.getElementById('authToggleApi').style.borderColor = mode === 'apikey' ? '#c9a87c' : '#e5e2dc';
+      document.getElementById('authToggleApi').style.background = mode === 'apikey' ? '#faf5ee' : '#fff';
+      // Reset next button unless already verified
+      document.getElementById('claudeNext').disabled = true;
+      apiKeyVerified = false;
+    }
+
+    // OAuth login
+    async function startOAuthLogin() {
+      const btn = document.getElementById('oauthLoginBtn');
+      const result = document.getElementById('oauthResult');
+      btn.disabled = true;
+      btn.textContent = 'Opening browser...';
+      result.className = 'test-result';
+
+      try {
+        const r = await fetch('/api/setup/oauth-login', { method: 'POST' });
+        const d = await r.json();
+        if (d.status === 'started') {
+          result.className = 'test-result';
+          result.textContent = 'Waiting for login in browser...';
+          pollOAuthStatus();
+        } else if (d.error) {
+          result.className = 'test-result fail';
+          result.textContent = d.error;
+          btn.disabled = false;
+          btn.textContent = 'Log in with Claude';
+        }
+      } catch {
+        result.className = 'test-result fail';
+        result.textContent = 'Failed to start login flow.';
+        btn.disabled = false;
+        btn.textContent = 'Log in with Claude';
+      }
+    }
+
+    async function pollOAuthStatus() {
+      const result = document.getElementById('oauthResult');
+      const btn = document.getElementById('oauthLoginBtn');
+      const check = async () => {
+        try {
+          const r = await fetch('/api/setup/oauth-status');
+          const d = await r.json();
+          if (d.status === 'installing') {
+            result.className = 'test-result';
+            result.textContent = 'Setting up... this may take a minute on first run.';
+            setTimeout(check, 2000);
+            return;
+          }
+          if (d.status === 'success') {
+            result.className = 'test-result ok';
+            result.textContent = '✓ Logged in to Claude successfully!';
+            document.getElementById('claudeNext').disabled = false;
+            btn.textContent = 'Logged In';
+            apiKeyVerified = true;
+            return;
+          }
+          if (d.status === 'error') {
+            result.className = 'test-result fail';
+            result.textContent = d.error || 'Login failed';
+            btn.disabled = false;
+            btn.textContent = 'Log in with Claude';
+            return;
+          }
+          // still started/waiting
+          result.className = 'test-result';
+          result.textContent = 'Waiting for login in browser...';
+          setTimeout(check, 2000);
+        } catch {
+          setTimeout(check, 3000);
+        }
+      };
+      check();
+    }
+
+    // API Key flow
     function onApiKeyInput() {
       const key = document.getElementById('apiKeyInput').value.trim();
       document.getElementById('testBtn').disabled = key.length < 10;
@@ -510,6 +622,11 @@
     }
 
     async function saveKeyAndNext() {
+      if (authMode === 'oauth') {
+        // OAuth token already saved by the server during login flow
+        goStep(4);
+        return;
+      }
       const key = document.getElementById('apiKeyInput').value.trim();
       try {
         await fetch('/api/setup/save-api-key', {

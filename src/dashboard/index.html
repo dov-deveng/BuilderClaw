@@ -77,8 +77,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
       flex-shrink: 0;
+      overflow: hidden;
     }
     .conv-item.active .conv-avatar { background: rgba(255,255,255,0.2); }
     .conv-info { flex: 1; min-width: 0; }
@@ -152,7 +152,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      overflow: hidden;
     }
     .chat-header-info { flex: 1; }
     .chat-header-name { font-size: 16px; font-weight: 600; }
@@ -196,8 +196,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
       flex-shrink: 0;
+      overflow: hidden;
+    }
+    .msg-avatar img, .conv-avatar img, .chat-header-avatar img {
+      width: 100%; height: 100%; object-fit: cover;
     }
     .msg-row.user .msg-avatar { display: none; }
     .bubble {
@@ -451,7 +454,8 @@
       padding: 60px 40px;
       color: #8e8e93;
     }
-    .welcome-msg .bear-icon { font-size: 48px; margin-bottom: 16px; }
+    .welcome-msg .bear-icon { margin-bottom: 16px; }
+    .welcome-msg .bear-icon img { width: 64px; height: 64px; }
     .welcome-msg h2 { font-size: 20px; color: #2d2d2d; margin-bottom: 8px; }
     .welcome-msg p { font-size: 14px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
 
@@ -475,7 +479,7 @@
     </div>
     <div class="conversations" id="convList">
       <div class="conv-item active" onclick="selectConv('bear')">
-        <div class="conv-avatar">🐻</div>
+        <div class="conv-avatar"><img src="/assets/claw-mascot.png" alt="Claw"></div>
         <div class="conv-info">
           <div class="conv-name">Bear</div>
           <div class="conv-preview" id="bearPreview">Your AI office manager</div>
@@ -496,7 +500,7 @@
   <main class="chat-area" style="position:relative;">
     <!-- Chat header -->
     <div class="chat-header">
-      <div class="chat-header-avatar">🐻</div>
+      <div class="chat-header-avatar"><img src="/assets/claw-mascot.png" alt="Claw"></div>
       <div class="chat-header-info">
         <div class="chat-header-name">Bear</div>
         <div class="chat-header-status" id="bearStatus">Online</div>
@@ -509,7 +513,7 @@
     <!-- Messages -->
     <div class="messages" id="messages">
       <div class="welcome-msg" id="welcomeMsg">
-        <div class="bear-icon">🐻</div>
+        <div class="bear-icon"><img src="/assets/claw-mascot.png" alt="Claw"></div>
         <h2>Hey there!</h2>
         <p>I'm Bear, your AI office manager. Ask me anything about your projects,
            estimates, safety compliance, or billing. I'll handle it or get the right
@@ -519,7 +523,7 @@
 
     <!-- Typing indicator -->
     <div class="typing-row" id="typingRow">
-      <div class="msg-avatar">🐻</div>
+      <div class="msg-avatar"><img src="/assets/claw-mascot.png" alt="Claw"></div>
       <div class="typing-bubble">
         <span></span><span></span><span></span>
       </div>
@@ -529,7 +533,7 @@
     <div class="input-area">
       <div class="attachments" id="attachments"></div>
       <div class="input-row">
-        <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">📎</button>
+        <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">+</button>
         <textarea id="msgInput" rows="1" placeholder="Message Bear..."
                   onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">↑</button>
@@ -588,12 +592,13 @@
     let messages = [];
     let lastMsgId = 0;
 
+    const CLAW_IMG = '/assets/claw-mascot.png';
     const ROLES = {
-      bear: { emoji: '🐻', name: 'Bear', role: 'Main Agent' },
-      pm: { emoji: '📋', name: 'PM', role: 'Project Manager' },
-      estimator: { emoji: '📐', name: 'Estimator', role: 'Cost Estimates' },
-      accounts: { emoji: '💰', name: 'Accounts', role: 'Billing' },
-      safety: { emoji: '🦺', name: 'Safety', role: 'OSHA Compliance' },
+      bear: { name: 'Claw', role: 'Main Agent' },
+      pm: { name: 'PM', role: 'Project Manager' },
+      estimator: { name: 'Estimator', role: 'Cost Estimates' },
+      accounts: { name: 'Accounts', role: 'Billing' },
+      safety: { name: 'Safety', role: 'OSHA Compliance' },
     };
 
     // --- Messaging ---
@@ -687,7 +692,7 @@
 
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
-      avatar.textContent = '🐻';
+      avatar.innerHTML = '<img src="' + CLAW_IMG + '" alt="Claw">';
 
       const wrapper = document.createElement('div');
 
@@ -740,7 +745,7 @@
       container.className = 'attachments has-files';
       container.innerHTML = pendingFiles.map((f, i) => `
         <div class="attachment-chip">
-          📄 ${escHtml(f.name)}
+          ${escHtml(f.name)}
           <span class="remove" onclick="removeFile(${i})">✕</span>
         </div>
       `).join('');
@@ -813,7 +818,7 @@
           const status = a.status || 'idle';
           return `
             <div class="agent-card">
-              <div class="agent-name">${info.emoji} ${info.name}</div>
+              <div class="agent-name"><img src="${CLAW_IMG}" alt="Claw" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;border-radius:50%;">${info.name}</div>
               <div class="agent-role">${info.role}</div>
               <span class="agent-status-badge ${status}">${status}</span>
             </div>
@@ -862,7 +867,7 @@
 
           const avatar = document.createElement('div');
           avatar.className = 'msg-avatar';
-          avatar.textContent = '🐻';
+          avatar.innerHTML = '<img src="' + CLAW_IMG + '" alt="Claw">';
 
           const wrapper = document.createElement('div');
           const bubble = document.createElement('div');

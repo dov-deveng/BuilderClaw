@@ -9,6 +9,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { detectAuthMode } from "./credential-proxy.js";
+import { DATA_DIR } from "../data-dir.js";
 
 const CONTAINER_IMAGE = "builderclaw-agent:latest";
 const CREDENTIAL_PROXY_PORT = 3001;
@@ -22,7 +23,6 @@ const MAX_HISTORY = 20;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "..", "..");
-const DATA_DIR = path.join(PROJECT_ROOT, "data");
 
 const VALID_AGENTS = ["bear", "pm", "estimator", "accounts", "safety"];
 
