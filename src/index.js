@@ -113,76 +113,77 @@ app.post("/api/setup/save-api-key", (req, res) => {
   res.json({ ok: true });
 });
 
-// --- OAuth login flow (Claude subscription) ---
-let oauthState = { status: "idle" }; // idle, started, success, error
+// --- Claude CLI helper (bundled with the app) ---
+function getClaudeCli() {
+  return path.join(__dirname, "..", "node_modules", "@anthropic-ai", "claude-code", "cli.js");
+}
 
-app.post("/api/setup/oauth-login", async (req, res) => {
-  oauthState = { status: "started" };
-
-  // Use bundled Claude CLI — no system install needed
+function spawnClaude(args) {
   const home = process.env.HOME || "";
-  const bundledCli = path.join(__dirname, "..", "node_modules", "@anthropic-ai", "claude-code", "cli.js");
-  if (!fs.existsSync(bundledCli)) {
-    oauthState = { status: "error", error: "Claude CLI not found in app bundle. Reinstall BuilderClaw." };
-    return res.json({ status: "error", error: oauthState.error });
-  }
-
-  oauthState = { status: "started" };
-  res.json({ status: "started" });
-
-  // Run claude login in background — it opens a browser
-  const { spawn } = await import("child_process");
   const fullPath = [home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":");
-  const child = spawn(process.execPath, [bundledCli, "login"], {
+  const { spawn: sp } = require("child_process");
+  return sp(process.execPath, [getClaudeCli(), ...args], {
     stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, HOME: home, PATH: fullPath, ELECTRON_RUN_AS_NODE: "1" },
   });
+}
 
-  let output = "";
-  child.stdout.on("data", (d) => { output += d.toString(); });
-  child.stderr.on("data", (d) => { output += d.toString(); });
+function execClaude(args, timeout = 15000) {
+  const home = process.env.HOME || "";
+  const fullPath = [home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":");
+  return execSync(
+    `"${process.execPath}" "${getClaudeCli()}" ${args.join(" ")}`,
+    { timeout, stdio: "pipe", env: { ...process.env, HOME: home, PATH: fullPath, ELECTRON_RUN_AS_NODE: "1" } }
+  ).toString().trim();
+}
 
+// --- OAuth login flow (Claude subscription) ---
+let oauthState = { status: "idle" };
+
+app.post("/api/setup/oauth-login", (req, res) => {
+  const cli = getClaudeCli();
+  if (!fs.existsSync(cli)) {
+    oauthState = { status: "error", error: "Claude CLI not found in app bundle. Reinstall BuilderClaw." };
+    return res.json(oauthState);
+  }
+
+  // Check if already logged in
+  try {
+    const status = JSON.parse(execClaude(["auth", "status", "--json"]));
+    if (status.loggedIn) {
+      setConfig("auth_mode", "oauth");
+      setConfig("anthropic_api_key", "oauth:" + (status.email || "authenticated"));
+      oauthState = { status: "success" };
+      return res.json(oauthState);
+    }
+  } catch {}
+
+  // Not logged in — start login flow
+  oauthState = { status: "started" };
+  res.json({ status: "started" });
+
+  const child = spawnClaude(["auth", "login"]);
   child.on("close", (code) => {
     if (code === 0) {
-      // Claude Code stores OAuth token in ~/.claude/ — find it
-      const claudeDir = path.join(process.env.HOME || "", ".claude");
-      const credFiles = [
-        path.join(claudeDir, ".credentials.json"),
-        path.join(claudeDir, "credentials.json"),
-      ];
-      let token = null;
-      for (const f of credFiles) {
-        try {
-          const creds = JSON.parse(fs.readFileSync(f, "utf-8"));
-          token = creds.oauthToken || creds.claudeAiOauth?.accessToken || creds.accessToken;
-          if (token) break;
-        } catch {}
-      }
-
-      if (token) {
-        // Save OAuth token to .env
-        const envPath = getEnvPath();
-        let content = "";
-        if (fs.existsSync(envPath)) {
-          content = fs.readFileSync(envPath, "utf-8");
-          content = content.split("\n").filter(l => !l.startsWith("CLAUDE_CODE_OAUTH_TOKEN=") && !l.startsWith("ANTHROPIC_API_KEY=")).join("\n");
+      // Verify login succeeded
+      try {
+        const status = JSON.parse(execClaude(["auth", "status", "--json"]));
+        if (status.loggedIn) {
+          setConfig("auth_mode", "oauth");
+          setConfig("anthropic_api_key", "oauth:" + (status.email || "authenticated"));
+          oauthState = { status: "success" };
+          return;
         }
-        content = content.trim() + "\nCLAUDE_CODE_OAUTH_TOKEN=" + token + "\n";
-        fs.writeFileSync(envPath, content);
-        setConfig("anthropic_api_key", "oauth");
-        oauthState = { status: "success" };
-      } else {
-        oauthState = { status: "error", error: "Login succeeded but couldn't find token. Try the API key option instead." };
-      }
+      } catch {}
+      oauthState = { status: "error", error: "Login completed but verification failed. Try again." };
     } else {
-      oauthState = { status: "error", error: "Login failed (exit " + code + "). Try the API key option instead." };
+      oauthState = { status: "error", error: "Login failed. Try again or use the API key option." };
     }
   });
 
-  // Timeout after 2 minutes
   setTimeout(() => {
     if (oauthState.status === "started") {
-      oauthState = { status: "error", error: "Login timed out. Try again or use the API key option." };
+      oauthState = { status: "error", error: "Login timed out. Try again." };
       try { child.kill(); } catch {}
     }
   }, 120000);
@@ -359,6 +360,36 @@ app.delete("/api/contacts/:id", (req, res) => {
 // CHAT API
 // =====================
 
+// --- Direct Claude execution (no Docker needed) ---
+function runClaudeDirect(task) {
+  return new Promise((resolve, reject) => {
+    const child = spawnClaude(["--print", task]);
+    let stdout = "", stderr = "";
+    child.stdout.on("data", (d) => { stdout += d.toString(); });
+    child.stderr.on("data", (d) => { stderr += d.toString(); });
+    child.on("close", (code) => {
+      if (code === 0 && stdout.trim()) {
+        resolve({ status: "success", result: stdout.trim() });
+      } else {
+        resolve({ status: "error", result: null, error: stderr || "Claude returned no output" });
+      }
+    });
+    child.on("error", (err) => {
+      resolve({ status: "error", result: null, error: err.message });
+    });
+  });
+}
+
+// Pick execution method: OAuth uses bundled CLI directly, API key uses Docker containers
+async function runTask(task, agent = "bear") {
+  const authMode = getConfig("auth_mode");
+  if (authMode === "oauth") {
+    return runClaudeDirect(task);
+  }
+  // API key mode: use Docker containers with credential proxy
+  return runContainer(task, agent);
+}
+
 const chatJobs = new Map();
 let jobCounter = 0;
 
@@ -380,7 +411,7 @@ app.post("/api/chat/send", (req, res) => {
     ? `${context}\n\n---\nMessage from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`
     : `Message from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`;
 
-  runContainer(fullTask, "bear")
+  runTask(fullTask, "bear")
     .then(result => {
       const response = result.result || "Sorry, I couldn't process that. Try again?";
       saveMessage("bear", "in", response, "Bear");
@@ -415,7 +446,7 @@ app.post("/api/agent/task", async (req, res) => {
   }
   const agentName = agent || "bear";
   try {
-    const result = await runContainer(task, agentName);
+    const result = await runTask(task, agentName);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -451,7 +482,7 @@ whatsapp.on("message", async (msg) => {
     : `WhatsApp message from ${senderName}:\n${text}\n\nRespond concisely for WhatsApp (2-4 sentences for simple answers). Do NOT use markdown formatting.`;
 
   try {
-    const result = await runContainer(fullTask, "bear");
+    const result = await runTask(fullTask, "bear");
     const response = result.result || "Sorry, I couldn't process that. Try again?";
 
     // Save outgoing message
