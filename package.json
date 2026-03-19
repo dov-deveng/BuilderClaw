@@ -1,0 +1,22 @@
+{
+  "name": "builderclaw",
+  "version": "1.0.0",
+  "description": "Your AI back office. Free forever.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "setup": "node src/index.js --setup",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": ["construction", "ai", "whatsapp", "contractor", "back-office"],
+  "author": "Dove & Bear Inc.",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "pino": "^9.6.0"
+  }
+}
