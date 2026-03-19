@@ -731,15 +731,12 @@
 
     <!-- Input area -->
     <div class="input-area">
-      <div class="attachments" id="attachments"></div>
       <div class="input-row">
-        <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">+</button>
         <textarea id="msgInput" rows="1" placeholder="Message Claw..."
                   onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">↑</button>
       </div>
     </div>
-    <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
 
   </main>
 
@@ -750,58 +747,34 @@
       <p>Connect tools and services to expand what Claw can do.</p>
     </div>
     <div class="tab-panel-body">
-      <div class="skill-section-title">Available</div>
-      <div class="skill-card" data-skill="trello">
+      <p style="font-size:13px; color:#8e8e93; margin-bottom:16px;">Ask Claw in chat to connect a skill.</p>
+      <div class="skill-card">
         <div class="skill-icon">📋</div>
         <div class="skill-info"><div class="skill-name">Trello</div><div class="skill-desc">Project boards, task tracking, punch lists</div></div>
-        <button class="skill-action" onclick="setupSkill('trello')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="slack">
+      <div class="skill-card">
         <div class="skill-icon">💬</div>
         <div class="skill-info"><div class="skill-name">Slack</div><div class="skill-desc">Team communication, notifications</div></div>
-        <button class="skill-action" onclick="setupSkill('slack')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="notion">
+      <div class="skill-card">
         <div class="skill-icon">📝</div>
         <div class="skill-info"><div class="skill-name">Notion</div><div class="skill-desc">Documentation, SOPs, project wikis</div></div>
-        <button class="skill-action" onclick="setupSkill('notion')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="google">
+      <div class="skill-card">
         <div class="skill-icon">🔷</div>
         <div class="skill-info"><div class="skill-name">Google Workspace</div><div class="skill-desc">Drive, Docs, Sheets, Calendar</div></div>
-        <button class="skill-action" onclick="setupSkill('google')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="github">
+      <div class="skill-card">
         <div class="skill-icon">🐙</div>
         <div class="skill-info"><div class="skill-name">GitHub</div><div class="skill-desc">Repos, issues, pull requests</div></div>
-        <button class="skill-action" onclick="setupSkill('github')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="discord">
+      <div class="skill-card">
         <div class="skill-icon">🎮</div>
         <div class="skill-info"><div class="skill-name">Discord</div><div class="skill-desc">Team chat, announcements</div></div>
-        <button class="skill-action" onclick="setupSkill('discord')">Setup</button>
       </div>
-      <div class="skill-card" data-skill="weather">
+      <div class="skill-card">
         <div class="skill-icon">🌤</div>
         <div class="skill-info"><div class="skill-name">Weather</div><div class="skill-desc">Jobsite forecasts for scheduling</div></div>
-        <button class="skill-action" onclick="setupSkill('weather')">Setup</button>
-      </div>
-
-      <div class="skill-section-title">Coming Soon</div>
-      <div class="skill-card" style="opacity:0.5;">
-        <div class="skill-icon">📦</div>
-        <div class="skill-info"><div class="skill-name">Dropbox</div><div class="skill-desc">File storage and sharing</div></div>
-        <button class="skill-action" disabled>Soon</button>
-      </div>
-      <div class="skill-card" style="opacity:0.5;">
-        <div class="skill-icon">📊</div>
-        <div class="skill-info"><div class="skill-name">Monday.com</div><div class="skill-desc">Project management boards</div></div>
-        <button class="skill-action" disabled>Soon</button>
-      </div>
-      <div class="skill-card" style="opacity:0.5;">
-        <div class="skill-icon">💵</div>
-        <div class="skill-info"><div class="skill-name">QuickBooks</div><div class="skill-desc">Accounting, invoicing, payroll</div></div>
-        <button class="skill-action" disabled>Soon</button>
       </div>
     </div>
   </div>
@@ -866,19 +839,6 @@
         <div id="settCompany">Loading...</div>
       </div>
 
-      <div class="settings-section">
-        <h3>Documents</h3>
-        <p style="font-size:13px; color:#8e8e93; margin-bottom:12px;">Give Claw access to your files so it can reference specs, contracts, and plans.</p>
-        <div class="setting-row">
-          <span class="setting-label">Google Drive</span>
-          <button class="sett-btn" id="settGoogleBtn" onclick="connectGoogle()">Connect</button>
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">Upload Files</span>
-          <button class="sett-btn" onclick="document.getElementById('docUpload').click()">Upload</button>
-        </div>
-        <input type="file" id="docUpload" multiple style="display:none;" onchange="handleDocUpload(this.files)">
-      </div>
 
       <div class="settings-section">
         <h3>System</h3>
@@ -892,7 +852,6 @@
 
   <script>
     // --- State ---
-    let pendingFiles = [];
     let currentJobId = null;
     let currentAgent = 'claw';
     let agentList = [];
@@ -915,20 +874,12 @@
     async function sendMessage() {
       const input = document.getElementById('msgInput');
       const text = input.value.trim();
-      if (!text && pendingFiles.length === 0) return;
+      if (!text) return;
 
-      // Show user message immediately
-      const fileNames = pendingFiles.map(f => f.name);
-      const fullMsg = fileNames.length > 0
-        ? text + '\n[Attached: ' + fileNames.join(', ') + ']'
-        : text;
+      addMessage('user', text);
 
-      addMessage('user', fullMsg);
-
-      // Clear input
       input.value = '';
       input.style.height = 'auto';
-      clearAttachments();
 
       // Hide welcome
       const welcome = document.querySelector('.welcome-msg');
@@ -942,7 +893,7 @@
         const r = await fetch('/api/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: fullMsg, agent: currentAgent }),
+          body: JSON.stringify({ message: text, agent: currentAgent }),
         });
         const d = await r.json();
         if (d.jobId) {
@@ -1051,59 +1002,6 @@
       }
     }
 
-    // --- Files ---
-    function handleFiles(fileList) {
-      const files = Array.from(fileList);
-      pendingFiles.push(...files);
-      renderAttachments();
-    }
-
-    function renderAttachments() {
-      const container = document.getElementById('attachments');
-      if (pendingFiles.length === 0) {
-        container.className = 'attachments';
-        container.innerHTML = '';
-        return;
-      }
-      container.className = 'attachments has-files';
-      container.innerHTML = pendingFiles.map((f, i) => `
-        <div class="attachment-chip">
-          ${escHtml(f.name)}
-          <span class="remove" onclick="removeFile(${i})">✕</span>
-        </div>
-      `).join('');
-    }
-
-    function removeFile(idx) {
-      pendingFiles.splice(idx, 1);
-      renderAttachments();
-    }
-
-    function clearAttachments() {
-      pendingFiles = [];
-      renderAttachments();
-      document.getElementById('fileInput').value = '';
-    }
-
-    // --- Drag & Drop ---
-    let dragCounter = 0;
-    document.addEventListener('dragenter', (e) => {
-      e.preventDefault();
-      dragCounter++;
-      document.getElementById('dropOverlay').classList.add('visible');
-    });
-    document.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      dragCounter--;
-      if (dragCounter === 0) document.getElementById('dropOverlay').classList.remove('visible');
-    });
-    document.addEventListener('dragover', (e) => e.preventDefault());
-    document.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dragCounter = 0;
-      document.getElementById('dropOverlay').classList.remove('visible');
-      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-    });
 
     // --- Tab Navigation ---
     let currentTab = 'chat';
@@ -1204,27 +1102,6 @@
       settWaPolling = setInterval(pollQr, 3000);
     }
 
-    function connectGoogle() {
-      alert('Google Workspace integration coming in the next update. Stay tuned!');
-    }
-
-    function handleDocUpload(files) {
-      alert('Uploaded ' + files.length + ' file(s). Document processing coming in the next update.');
-    }
-
-    // --- Skills ---
-    function setupSkill(name) {
-      const instructions = {
-        trello: 'To connect Trello:\n1. Go to trello.com/app-key\n2. Copy your API Key and Token\n3. Claw will use these to manage your boards.',
-        slack: 'To connect Slack:\n1. Create a Slack app at api.slack.com/apps\n2. Add Bot Token scopes\n3. Install to your workspace and copy the Bot Token.',
-        notion: 'To connect Notion:\n1. Go to notion.so/my-integrations\n2. Create an integration\n3. Copy the Internal Integration Token.',
-        google: 'Google Workspace integration coming in the next update!',
-        github: 'To connect GitHub:\n1. Go to github.com/settings/tokens\n2. Generate a Personal Access Token\n3. Give it repo access.',
-        discord: 'To connect Discord:\n1. Go to discord.com/developers/applications\n2. Create a Bot\n3. Copy the Bot Token.',
-        weather: 'Weather works out of the box! Just ask Claw about weather for your jobsite.',
-      };
-      alert(instructions[name] || 'Setup instructions coming soon.');
-    }
 
     // --- Agents ---
     async function loadAgentsTab() {
@@ -1251,30 +1128,13 @@
           card.onclick = () => selectAgent(agent.id);
           body.appendChild(card);
         }
-        const btn = document.createElement('button');
-        btn.className = 'add-agent-btn';
-        btn.textContent = '+ Add Agent';
-        btn.onclick = addAgent;
-        body.appendChild(btn);
+        const note = document.createElement('p');
+        note.style.cssText = 'font-size:12px; color:#8e8e93; text-align:center; margin-top:16px;';
+        note.textContent = 'To add a new agent, ask Claw in chat.';
+        body.appendChild(note);
       } catch {}
     }
 
-    async function addAgent() {
-      const name = prompt('Agent name (e.g. "Legal", "HR", "Logistics"):');
-      if (!name || !name.trim()) return;
-      const desc = prompt('What does this agent do?');
-      if (!desc) return;
-      const id = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-      try {
-        await fetch('/api/agents', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, name: name.trim(), role: desc.trim(), icon: '🤖' }),
-        });
-        await loadAgents();
-        await loadAgentsTab();
-      } catch {}
-    }
 
     // --- Status polling ---
     async function pollStatus() {
@@ -1484,10 +1344,6 @@
 
     function formatTime(date) {
       return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    }
-
-    function selectConv(name) {
-      // Only bear for now
     }
 
     // --- Init ---
