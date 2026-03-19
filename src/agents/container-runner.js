@@ -137,7 +137,7 @@ function buildVolumeMounts(agent) {
   // System prompt
   fs.mkdirSync(paths.promptDir, { recursive: true });
   const promptSrc = path.join(PROJECT_ROOT, "src", "agents", "prompts", `${agent}.md`);
-  const fallbackSrc = path.join(PROJECT_ROOT, "src", "agents", "prompts", "bear.md");
+  const fallbackSrc = path.join(PROJECT_ROOT, "src", "agents", "prompts", "claw.md");
   const src = fs.existsSync(promptSrc) ? promptSrc : fallbackSrc;
   if (fs.existsSync(src)) fs.copyFileSync(src, path.join(paths.promptDir, "system-prompt.md"));
   mounts.push({ hostPath: paths.promptDir, containerPath: "/workspace/prompt", readonly: true });

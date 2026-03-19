@@ -91,9 +91,22 @@ db.exec(`
     config TEXT,
     PRIMARY KEY (agent_id, skill_id)
   );
+
+  CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    task_prompt TEXT NOT NULL,
+    agent_id TEXT DEFAULT 'claw',
+    interval_minutes INTEGER DEFAULT 0,
+    next_run INTEGER NOT NULL,
+    last_run INTEGER,
+    enabled INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (unixepoch() * 1000)
+  );
 `);
 
-// --- Migrate: add agent_id column to messages if missing ---
+// --- Migrations ---
 try {
   const cols = db.prepare("PRAGMA table_info(messages)").all();
   if (!cols.find(c => c.name === "agent_id")) {
@@ -101,9 +114,14 @@ try {
   }
 } catch {}
 
+// Migrate prompt_file: bear.md → claw.md for existing installs
+try {
+  db.prepare("UPDATE agents SET prompt_file = 'claw.md' WHERE id = 'claw' AND prompt_file = 'bear.md'").run();
+} catch {}
+
 // --- Seed default agents ---
 const DEFAULT_AGENTS = [
-  { id: "claw", name: "Claw", role: "Your main point of contact. Routes tasks, answers questions.", icon: "/assets/claw-mascot.png", prompt_file: "bear.md" },
+  { id: "claw", name: "Claw", role: "Your main point of contact. Routes tasks, answers questions.", icon: "/assets/claw-mascot.png", prompt_file: "claw.md" },
   { id: "pm", name: "PM", role: "Schedules, timelines, task tracking, punch lists.", icon: "📋", prompt_file: "pm.md" },
   { id: "estimator", name: "Estimator", role: "Takeoffs, material estimates, labor calcs, bids.", icon: "📐", prompt_file: "estimator.md" },
   { id: "accounts", name: "Accounts", role: "Invoicing, payments, lien waivers, budgets.", icon: "💰", prompt_file: "accounts.md" },
@@ -325,6 +343,37 @@ Team size: ${company.team_size || "Unknown"}`;
   }
 
   return ctx;
+}
+
+// --- Scheduled Tasks ---
+export function createScheduledTask(data) {
+  return db.prepare(
+    "INSERT INTO scheduled_tasks (name, description, task_prompt, agent_id, interval_minutes, next_run) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(data.name, data.description || null, data.task_prompt, data.agent_id || "claw", data.interval_minutes || 0, data.next_run);
+}
+
+export function getScheduledTasks() {
+  return db.prepare("SELECT * FROM scheduled_tasks ORDER BY next_run").all();
+}
+
+export function getDueTasks(now) {
+  return db.prepare("SELECT * FROM scheduled_tasks WHERE enabled = 1 AND next_run <= ?").all(now);
+}
+
+export function updateTaskAfterRun(id, lastRun) {
+  const task = db.prepare("SELECT * FROM scheduled_tasks WHERE id = ?").get(id);
+  if (!task) return;
+  if (task.interval_minutes > 0) {
+    const nextRun = lastRun + task.interval_minutes * 60 * 1000;
+    db.prepare("UPDATE scheduled_tasks SET last_run = ?, next_run = ? WHERE id = ?").run(lastRun, nextRun, id);
+  } else {
+    // One-time task: disable after running
+    db.prepare("UPDATE scheduled_tasks SET last_run = ?, enabled = 0 WHERE id = ?").run(lastRun, id);
+  }
+}
+
+export function deleteScheduledTask(id) {
+  db.prepare("DELETE FROM scheduled_tasks WHERE id = ?").run(id);
 }
 
 export { db };

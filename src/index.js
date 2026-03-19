@@ -10,8 +10,8 @@ import { execSync } from "child_process";
 import QRCode from "qrcode";
 import { startCredentialProxy } from "./agents/credential-proxy.js";
 import { runContainer, stopContainer, getAgentStatuses, getContainerInfo, shutdownAll } from "./agents/container-runner.js";
-import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext, getAgents, getAgent, createAgent, updateAgent, getAgentMemory, setAgentMemory, deleteAgentMemory, getAgentSkills, setAgentSkill } from "./memory/db.js";
-import { getEnvPath } from "./data-dir.js";
+import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext, getAgents, getAgent, createAgent, updateAgent, getAgentMemory, setAgentMemory, deleteAgentMemory, getAgentSkills, setAgentSkill, createScheduledTask, getScheduledTasks, getDueTasks, updateTaskAfterRun, deleteScheduledTask } from "./memory/db.js";
+import { getEnvPath, DATA_DIR } from "./data-dir.js";
 import { buildAgentTask } from "./agents/agent-registry.js";
 import { listAgentFiles, saveAgentFile, readAgentFile } from "./agents/agent-files.js";
 import whatsapp from "./whatsapp/client.js";
@@ -23,6 +23,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "dashboard"), { index: false }));
 app.use("/assets", express.static(path.join(__dirname, "dashboard", "assets")));
+app.use("/workspace", express.static(path.join(DATA_DIR, "workspace", "bear")));
 
 // No-cache on HTML so edits show without restart
 app.use((req, res, next) => {
@@ -484,6 +485,35 @@ app.delete("/api/contacts/:id", (req, res) => {
 });
 
 // =====================
+// SCHEDULED TASKS API
+// =====================
+
+app.get("/api/tasks/scheduled", (req, res) => {
+  res.json(getScheduledTasks());
+});
+
+app.post("/api/tasks/schedule", (req, res) => {
+  const { name, task_prompt, interval_minutes, next_run, description, agent_id } = req.body;
+  if (!name || !task_prompt || next_run == null) {
+    return res.status(400).json({ error: "name, task_prompt, and next_run required" });
+  }
+  const result = createScheduledTask({
+    name,
+    description,
+    task_prompt,
+    agent_id,
+    interval_minutes: interval_minutes || 0,
+    next_run,
+  });
+  res.json({ ok: true, id: result.lastInsertRowid });
+});
+
+app.delete("/api/tasks/scheduled/:id", (req, res) => {
+  deleteScheduledTask(req.params.id);
+  res.json({ ok: true });
+});
+
+// =====================
 // CHAT API
 // =====================
 
@@ -659,6 +689,33 @@ async function start() {
       whatsapp.connect().catch(err => {
         console.error("[startup] WhatsApp connection failed:", err.message);
       });
+
+      // Start scheduled task runner — checks every 60 seconds
+      setInterval(() => {
+        try {
+          const now = Date.now();
+          const due = getDueTasks(now);
+          for (const task of due) {
+            console.log(`[scheduler] Running: ${task.name}`);
+            const fullTask = buildAgentTask(task.agent_id || "claw", task.task_prompt, "scheduled");
+            runTask(fullTask, task.agent_id || "claw")
+              .then(result => {
+                const raw = result.result || "";
+                if (raw) {
+                  const { text } = processAgentResponse(task.agent_id || "claw", raw);
+                  saveMessage(task.agent_id || "claw", "in", text, "Claw (scheduled)", null, task.agent_id || "claw");
+                }
+                console.log(`[scheduler] Completed: ${task.name}`);
+              })
+              .catch(err => {
+                console.error(`[scheduler] Failed: ${task.name} — ${err.message}`);
+              });
+            updateTaskAfterRun(task.id, now);
+          }
+        } catch (err) {
+          console.error("[scheduler] Error:", err.message);
+        }
+      }, 60000);
     }
   });
 
