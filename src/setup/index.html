@@ -297,27 +297,61 @@
     <!-- STEP 4: WhatsApp -->
     <div class="step" id="step4">
       <h2>Connect WhatsApp</h2>
-      <p class="desc">
-        Link your WhatsApp so you can message Bear directly from your phone.
-        You can use your personal or business number.
-      </p>
 
-      <div class="qr-container" id="qrContainer">
-        <div class="spinner" id="qrSpinner"></div>
-        <p style="color:#8e8e93; font-size:13px; margin-top:12px;" id="qrLabel">Generating QR code...</p>
+      <!-- Phase 1: Explain + trigger word -->
+      <div id="waSetup">
+        <p class="desc">
+          Link your WhatsApp so you can message Claw directly from your phone.
+          Claw only responds in personal chats (never groups), and only when you
+          include a trigger word in your message.
+        </p>
+
+        <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
+          <strong>How it works:</strong><br>
+          1. You connect your WhatsApp by scanning a QR code<br>
+          2. In any personal chat, type your trigger word + your message<br>
+          3. Claw reads the message, processes it, and replies in the same chat<br>
+          4. Messages without the trigger word are completely ignored<br><br>
+          <strong>Example:</strong> <span style="background:#e5e2dc; padding:2px 8px; border-radius:4px; font-family:monospace;">@Claw how much rebar do I need for a 20x30 slab?</span>
+        </div>
+
+        <label for="triggerInput">Trigger Word</label>
+        <input type="text" id="triggerInput" value="@Claw" placeholder="@Claw" style="margin-bottom:4px;">
+        <p style="font-size:12px; color:#8e8e93; margin-bottom:20px;">
+          Pick any word or phrase. Claw only responds when this appears in the message.
+        </p>
+
+        <div style="text-align:center;">
+          <button class="btn btn-primary" onclick="saveTriggerAndScan()" style="width:100%;">
+            Continue to QR Scan
+          </button>
+        </div>
       </div>
 
-      <div id="waConnected" style="display:none; text-align:center; margin-bottom:24px;">
-        <div class="connected-badge">&#10003; WhatsApp Connected</div>
-        <p style="margin-top:8px; font-size:14px; color:#6b6b6b;" id="waPhone"></p>
-      </div>
+      <!-- Phase 2: QR scan -->
+      <div id="waScan" style="display:none;">
+        <p class="desc" style="margin-bottom:16px;">
+          Scan this QR code to link your WhatsApp. Claw will only respond when you type
+          <strong id="triggerDisplay">@Claw</strong> in a personal chat.
+        </p>
 
-      <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:16px; font-size:13px; line-height:1.8;">
-        <strong>To scan:</strong><br>
-        1. Open WhatsApp on your phone<br>
-        2. Go to Settings → Linked Devices<br>
-        3. Tap "Link a Device"<br>
-        4. Point your camera at the QR code above
+        <div class="qr-container" id="qrContainer">
+          <div class="spinner" id="qrSpinner"></div>
+          <p style="color:#8e8e93; font-size:13px; margin-top:12px;" id="qrLabel">Generating QR code...</p>
+        </div>
+
+        <div id="waConnected" style="display:none; text-align:center; margin-bottom:24px;">
+          <div class="connected-badge">&#10003; WhatsApp Connected</div>
+          <p style="margin-top:8px; font-size:14px; color:#6b6b6b;" id="waPhone"></p>
+        </div>
+
+        <div style="background:#faf9f7; border-radius:12px; padding:16px 20px; margin-bottom:16px; font-size:13px; line-height:1.8;">
+          <strong>To scan:</strong><br>
+          1. Open WhatsApp on your phone<br>
+          2. Go to Settings → Linked Devices<br>
+          3. Tap "Link a Device"<br>
+          4. Point your camera at the QR code above
+        </div>
       </div>
 
       <div class="btn-row">
@@ -400,7 +434,7 @@
       <div class="success-circle">&#10003;</div>
       <h2 style="text-align:center;">You're All Set</h2>
       <p class="desc" style="text-align:center;">
-        Bear and your AI team are ready. Send a message from the dashboard or WhatsApp to get started.
+        Claw and your AI team are ready. Send a message from the dashboard or WhatsApp to get started.
       </p>
 
       <div class="team-grid">
@@ -446,7 +480,6 @@
       currentStep = n;
       updateProgress(n);
       if (n === 2) checkDockerStatus();
-      if (n === 4) startWhatsApp();
       if (n !== 4 && waPolling) { clearInterval(waPolling); waPolling = null; }
     }
 
@@ -515,15 +548,26 @@
       const btn = document.getElementById('oauthLoginBtn');
       const result = document.getElementById('oauthResult');
       btn.disabled = true;
-      btn.textContent = 'Opening browser...';
+      btn.textContent = 'Checking...';
       result.className = 'test-result';
+      result.style.display = 'none';
 
       try {
         const r = await fetch('/api/setup/oauth-login', { method: 'POST' });
         const d = await r.json();
-        if (d.status === 'started') {
+        if (d.status === 'success') {
+          result.className = 'test-result ok';
+          result.textContent = '✓ Logged in to Claude successfully!';
+          document.getElementById('claudeNext').disabled = false;
+          btn.textContent = 'Logged In ✓';
+          apiKeyVerified = true;
+        } else if (d.status === 'started') {
+          btn.textContent = 'Waiting for browser...';
           result.className = 'test-result';
-          result.textContent = 'Waiting for login in browser...';
+          result.style.display = 'block';
+          result.style.background = '#fef9e7';
+          result.style.color = '#856404';
+          result.textContent = 'Complete login in the browser window that opened...';
           pollOAuthStatus();
         } else if (d.error) {
           result.className = 'test-result fail';
@@ -542,34 +586,45 @@
     async function pollOAuthStatus() {
       const result = document.getElementById('oauthResult');
       const btn = document.getElementById('oauthLoginBtn');
+      const showWaiting = (msg) => {
+        result.className = 'test-result';
+        result.style.display = 'block';
+        result.style.background = '#fef9e7';
+        result.style.color = '#856404';
+        result.textContent = msg;
+      };
       const check = async () => {
         try {
           const r = await fetch('/api/setup/oauth-status');
           const d = await r.json();
           if (d.status === 'installing') {
-            result.className = 'test-result';
-            result.textContent = 'Setting up... this may take a minute on first run.';
+            showWaiting('Setting up... this may take a minute on first run.');
             setTimeout(check, 2000);
             return;
           }
           if (d.status === 'success') {
             result.className = 'test-result ok';
+            result.style.display = '';
+            result.style.background = '';
+            result.style.color = '';
             result.textContent = '✓ Logged in to Claude successfully!';
             document.getElementById('claudeNext').disabled = false;
-            btn.textContent = 'Logged In';
+            btn.textContent = 'Logged In ✓';
             apiKeyVerified = true;
             return;
           }
           if (d.status === 'error') {
             result.className = 'test-result fail';
+            result.style.display = '';
+            result.style.background = '';
+            result.style.color = '';
             result.textContent = d.error || 'Login failed';
             btn.disabled = false;
             btn.textContent = 'Log in with Claude';
             return;
           }
           // still started/waiting
-          result.className = 'test-result';
-          result.textContent = 'Waiting for login in browser...';
+          showWaiting('Waiting for login in browser...');
           setTimeout(check, 2000);
         } catch {
           setTimeout(check, 3000);
@@ -639,6 +694,21 @@
     }
 
     // --- Step 4: WhatsApp ---
+    async function saveTriggerAndScan() {
+      const trigger = document.getElementById('triggerInput').value.trim() || '@Claw';
+      try {
+        await fetch('/api/setup/save-trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trigger }),
+        });
+      } catch {}
+      document.getElementById('triggerDisplay').textContent = trigger;
+      document.getElementById('waSetup').style.display = 'none';
+      document.getElementById('waScan').style.display = 'block';
+      startWhatsApp();
+    }
+
     async function startWhatsApp() {
       try { await fetch('/api/setup/connect-whatsapp', { method: 'POST' }); } catch {}
       pollQR();

@@ -10,8 +10,10 @@ import { execSync } from "child_process";
 import QRCode from "qrcode";
 import { startCredentialProxy } from "./agents/credential-proxy.js";
 import { runContainer, stopContainer, getAgentStatuses, getContainerInfo, shutdownAll } from "./agents/container-runner.js";
-import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext } from "./memory/db.js";
+import { getConfig, setConfig, getCompany, saveCompany, saveMessage, getMessages, getProjects, saveProject, updateProject, deleteProject, getContacts, saveContact, updateContact, deleteContact, getCostToday, buildContractorContext, getAgents, getAgent, createAgent, updateAgent, getAgentMemory, setAgentMemory, deleteAgentMemory, getAgentSkills, setAgentSkill } from "./memory/db.js";
 import { getEnvPath } from "./data-dir.js";
+import { buildAgentTask } from "./agents/agent-registry.js";
+import { listAgentFiles, saveAgentFile, readAgentFile } from "./agents/agent-files.js";
 import whatsapp from "./whatsapp/client.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -97,6 +99,12 @@ app.post("/api/setup/save-api-key", (req, res) => {
     return res.status(400).json({ error: "Valid API key required" });
   }
 
+  // Sanitize: strip newlines, control chars, whitespace
+  const cleanKey = apiKey.replace(/[\r\n\t\x00-\x1f]/g, "").trim();
+  if (!cleanKey || cleanKey.length < 10) {
+    return res.status(400).json({ error: "Invalid API key format" });
+  }
+
   // Save to .env file
   const envPath = getEnvPath();
   let content = "";
@@ -104,7 +112,7 @@ app.post("/api/setup/save-api-key", (req, res) => {
     content = fs.readFileSync(envPath, "utf-8");
     content = content.split("\n").filter(l => !l.startsWith("ANTHROPIC_API_KEY=")).join("\n");
   }
-  content = content.trim() + "\nANTHROPIC_API_KEY=" + apiKey + "\n";
+  content = content.trim() + "\nANTHROPIC_API_KEY=" + cleanKey + "\n";
   fs.writeFileSync(envPath, content);
 
   // Mark as configured
@@ -114,27 +122,76 @@ app.post("/api/setup/save-api-key", (req, res) => {
 });
 
 // --- Claude CLI helper (bundled with the app) ---
+import { spawn as spawnProcess } from "child_process";
+
 function getClaudeCli() {
   return path.join(__dirname, "..", "node_modules", "@anthropic-ai", "claude-code", "cli.js");
 }
 
-function spawnClaude(args) {
+function getNodeBin() {
+  // Find system node binary — don't use process.execPath (that's Electron in packaged app)
   const home = process.env.HOME || "";
-  const fullPath = [home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":");
-  const { spawn: sp } = require("child_process");
-  return sp(process.execPath, [getClaudeCli(), ...args], {
+  const candidates = [
+    "/usr/local/bin/node",
+    "/opt/homebrew/bin/node",
+    path.join(home, ".local", "bin", "node"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    } catch {}
+  }
+  // Check NVM default version
+  try {
+    const nvmDefault = path.join(home, ".nvm", "alias", "default");
+    if (fs.existsSync(nvmDefault)) {
+      const ver = fs.readFileSync(nvmDefault, "utf-8").trim();
+      const nvmNode = path.join(home, ".nvm", "versions", "node", ver, "bin", "node");
+      if (fs.existsSync(nvmNode)) return nvmNode;
+    }
+  } catch {}
+  // Try to find via which
+  try {
+    const found = execSync("which node", { timeout: 3000, stdio: "pipe" }).toString().trim();
+    if (found && fs.existsSync(found)) return found;
+  } catch {}
+  // Last resort: use Electron as node (with ELECTRON_RUN_AS_NODE=1)
+  return process.execPath;
+}
+
+function getClaudeEnv() {
+  const home = process.env.HOME || "";
+  const nodeBin = getNodeBin();
+  const nodeDir = path.dirname(nodeBin);
+  return {
+    ...process.env,
+    HOME: home,
+    PATH: [nodeDir, home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":"),
+    ELECTRON_RUN_AS_NODE: "1",
+  };
+}
+
+function spawnClaude(args) {
+  const nodeBin = getNodeBin();
+  const isElectron = nodeBin === process.execPath;
+  const cmd = isElectron ? process.execPath : nodeBin;
+  return spawnProcess(cmd, [getClaudeCli(), ...args], {
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, HOME: home, PATH: fullPath, ELECTRON_RUN_AS_NODE: "1" },
+    env: getClaudeEnv(),
   });
 }
 
 function execClaude(args, timeout = 15000) {
-  const home = process.env.HOME || "";
-  const fullPath = [home + "/.local/bin", "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", process.env.PATH || ""].join(":");
-  return execSync(
-    `"${process.execPath}" "${getClaudeCli()}" ${args.join(" ")}`,
-    { timeout, stdio: "pipe", env: { ...process.env, HOME: home, PATH: fullPath, ELECTRON_RUN_AS_NODE: "1" } }
-  ).toString().trim();
+  const nodeBin = getNodeBin();
+  const isElectron = nodeBin === process.execPath;
+  const cmd = isElectron ? process.execPath : nodeBin;
+  // Use spawnSync with array args to avoid shell injection
+  const { stdout, status } = require("child_process").spawnSync(
+    cmd, [getClaudeCli(), ...args],
+    { timeout, stdio: "pipe", env: getClaudeEnv() }
+  );
+  if (status !== 0 && status !== null) throw new Error("Claude CLI exited with code " + status);
+  return (stdout || "").toString().trim();
 }
 
 // --- OAuth login flow (Claude subscription) ---
@@ -236,6 +293,14 @@ app.get("/api/setup/whatsapp-qr", async (req, res) => {
   }
 });
 
+app.post("/api/setup/save-trigger", (req, res) => {
+  const { trigger } = req.body;
+  const word = (trigger || "@Claw").trim();
+  setConfig("whatsapp_trigger", word);
+  whatsapp.triggerWord = word;
+  res.json({ ok: true, trigger: word });
+});
+
 app.post("/api/setup/connect-whatsapp", async (req, res) => {
   try {
     await whatsapp.connect();
@@ -267,6 +332,7 @@ app.post("/api/setup/complete", async (req, res) => {
 
   // Auto-connect WhatsApp if not already connected
   if (whatsapp.getStatus().status !== "connected") {
+    whatsapp.triggerWord = getConfig("whatsapp_trigger") || "@Claw";
     whatsapp.connect().catch(err => {
       console.error("[setup] WhatsApp connection failed:", err.message);
     });
@@ -286,7 +352,6 @@ app.get("/api/status", (req, res) => {
     whatsapp: wa.status,
     phoneNumber: wa.phoneNumber,
     company: getCompany(),
-    agents: getAgentStatuses(),
     costToday: getCostToday(),
   });
 });
@@ -294,11 +359,73 @@ app.get("/api/status", (req, res) => {
 app.get("/api/messages", (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const offset = parseInt(req.query.offset) || 0;
-  res.json(getMessages(limit, offset));
+  const agentId = req.query.agent || null;
+  res.json(getMessages(limit, offset, agentId));
 });
 
+// --- Agent CRUD ---
 app.get("/api/agents", (req, res) => {
-  res.json(getAgentStatuses());
+  res.json(getAgents());
+});
+
+app.get("/api/agents/:id", (req, res) => {
+  const agent = getAgent(req.params.id);
+  if (!agent) return res.status(404).json({ error: "Agent not found" });
+  res.json(agent);
+});
+
+app.post("/api/agents", (req, res) => {
+  const { id, name, role, icon } = req.body;
+  if (!id || !name) return res.status(400).json({ error: "id and name required" });
+  // Sanitize id
+  const safeId = id.toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 30);
+  createAgent({ id: safeId, name, role, icon });
+  res.json({ ok: true, id: safeId });
+});
+
+app.put("/api/agents/:id", (req, res) => {
+  updateAgent(req.params.id, req.body);
+  res.json({ ok: true });
+});
+
+// --- Agent Memory ---
+app.get("/api/agents/:id/memory", (req, res) => {
+  res.json(getAgentMemory(req.params.id));
+});
+
+app.post("/api/agents/:id/memory", (req, res) => {
+  const { key, value } = req.body;
+  if (!key || !value) return res.status(400).json({ error: "key and value required" });
+  setAgentMemory(req.params.id, key, value);
+  res.json({ ok: true });
+});
+
+app.delete("/api/agents/:id/memory/:key", (req, res) => {
+  deleteAgentMemory(req.params.id, req.params.key);
+  res.json({ ok: true });
+});
+
+// --- Agent Skills ---
+app.get("/api/agents/:id/skills", (req, res) => {
+  res.json(getAgentSkills(req.params.id));
+});
+
+app.post("/api/agents/:id/skills", (req, res) => {
+  const { skill_id, enabled, config } = req.body;
+  if (!skill_id) return res.status(400).json({ error: "skill_id required" });
+  setAgentSkill(req.params.id, skill_id, enabled !== false, config || null);
+  res.json({ ok: true });
+});
+
+// --- Agent Files ---
+app.get("/api/agents/:id/files", (req, res) => {
+  res.json(listAgentFiles(req.params.id));
+});
+
+app.get("/api/agents/:id/files/:filename", (req, res) => {
+  const content = readAgentFile(req.params.id, req.params.filename);
+  if (content === null) return res.status(404).json({ error: "File not found" });
+  res.type("text/plain").send(content);
 });
 
 app.get("/api/containers", (req, res) => {
@@ -362,7 +489,7 @@ app.delete("/api/contacts/:id", (req, res) => {
 
 // --- Direct Claude execution (no Docker needed) ---
 function runClaudeDirect(task) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const child = spawnClaude(["--print", task]);
     let stdout = "", stderr = "";
     child.stdout.on("data", (d) => { stdout += d.toString(); });
@@ -381,41 +508,75 @@ function runClaudeDirect(task) {
 }
 
 // Pick execution method: OAuth uses bundled CLI directly, API key uses Docker containers
-async function runTask(task, agent = "bear") {
+async function runTask(task, agentId = "claw") {
   const authMode = getConfig("auth_mode");
   if (authMode === "oauth") {
     return runClaudeDirect(task);
   }
   // API key mode: use Docker containers with credential proxy
-  return runContainer(task, agent);
+  const containerAgent = agentId === "claw" ? "bear" : agentId;
+  return runContainer(task, containerAgent);
+}
+
+// Post-process agent response: extract [MEMORY:...] and [FILE:...] tags
+function processAgentResponse(agentId, rawResponse) {
+  let clean = rawResponse;
+  const files = [];
+
+  // Extract and save memories
+  const memoryPattern = /\[MEMORY:([a-zA-Z0-9_]+)=([^\]]+)\]/g;
+  let match;
+  while ((match = memoryPattern.exec(rawResponse)) !== null) {
+    try {
+      setAgentMemory(agentId, match[1], match[2].trim());
+      console.log(`[memory] ${agentId}: saved ${match[1]}`);
+    } catch (err) {
+      console.error(`[memory] Failed to save: ${err.message}`);
+    }
+    clean = clean.replace(match[0], "");
+  }
+
+  // Extract and save files
+  const filePattern = /\[FILE:([\w.\-]+)\]([\s\S]*?)\[\/FILE\]/g;
+  while ((match = filePattern.exec(rawResponse)) !== null) {
+    try {
+      const savedName = saveAgentFile(agentId, match[1], match[2].trim());
+      files.push(savedName);
+      console.log(`[files] ${agentId}: saved ${savedName}`);
+    } catch (err) {
+      console.error(`[files] Failed to save: ${err.message}`);
+    }
+    clean = clean.replace(match[0], "");
+  }
+
+  return { text: clean.trim(), savedFiles: files };
 }
 
 const chatJobs = new Map();
 let jobCounter = 0;
 
 app.post("/api/chat/send", (req, res) => {
-  const { message } = req.body;
+  const { message, agent } = req.body;
   if (!message || message.length > 10000) {
     return res.status(400).json({ error: "Message required (max 10000 chars)" });
   }
 
+  const agentId = agent || "claw";
   const jobId = String(++jobCounter);
-  chatJobs.set(jobId, { status: "running", message });
+  chatJobs.set(jobId, { status: "running", message, agent: agentId });
 
   // Save user message
-  saveMessage("user", "out", message, "You");
+  saveMessage("user", "out", message, "You", null, agentId);
 
-  // Build context and send to Bear
-  const context = buildContractorContext();
-  const fullTask = context
-    ? `${context}\n\n---\nMessage from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`
-    : `Message from contractor:\n${message}\n\nRespond concisely (2-4 sentences for simple answers). Do NOT use markdown formatting.`;
+  // Build per-agent prompt
+  const fullTask = buildAgentTask(agentId, message, "chat");
 
-  runTask(fullTask, "bear")
+  runTask(fullTask, agentId)
     .then(result => {
-      const response = result.result || "Sorry, I couldn't process that. Try again?";
-      saveMessage("bear", "in", response, "Bear");
-      chatJobs.set(jobId, { status: "done", result: response });
+      const raw = result.result || "Sorry, I couldn't process that. Try again?";
+      const { text, savedFiles } = processAgentResponse(agentId, raw);
+      saveMessage(agentId, "in", text, getAgent(agentId)?.name || "Claw", null, agentId);
+      chatJobs.set(jobId, { status: "done", result: text, files: savedFiles });
       // Cleanup old jobs
       if (chatJobs.size > 100) {
         const keys = [...chatJobs.keys()];
@@ -435,64 +596,41 @@ app.get("/api/chat/job/:id", (req, res) => {
   res.json(job);
 });
 
-// =====================
-// AGENT API
-// =====================
-
-app.post("/api/agent/task", async (req, res) => {
-  const { task, agent } = req.body;
-  if (!task || task.length > 10000) {
-    return res.status(400).json({ error: "Task required (max 10000 chars)" });
-  }
-  const agentName = agent || "bear";
-  try {
-    const result = await runTask(task, agentName);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.post("/api/agent/stop", (req, res) => {
   const { agent } = req.body;
-  stopContainer(agent || "bear");
+  stopContainer(agent || "claw");
   res.json({ ok: true });
 });
 
 // =====================
-// WHATSAPP → BEAR PIPELINE
+// WHATSAPP → CLAW PIPELINE
 // =====================
 
 whatsapp.on("message", async (msg) => {
   const { text, sender, senderName } = msg;
 
-  // Save incoming message always (for history)
-  saveMessage("incoming", "in", text, senderName);
+  // Save incoming message
+  saveMessage("incoming", "in", text, senderName, null, "claw");
 
-  // Don't route to Bear if setup isn't complete — no API key means containers will crash
+  // Don't process if setup isn't complete
   if (!isSetupComplete()) {
-    console.log(`[pipeline] Skipping Bear — setup not complete. Message from ${senderName}: ${text.slice(0, 60)}`);
+    console.log(`[pipeline] Skipping — setup not complete. Message from ${senderName}: ${text.slice(0, 60)}`);
     return;
   }
 
-  // Build context and send to Bear
-  const context = buildContractorContext();
-  const fullTask = context
-    ? `${context}\n\n---\nWhatsApp message from ${senderName}:\n${text}\n\nRespond concisely for WhatsApp (2-4 sentences for simple answers). Do NOT use markdown formatting.`
-    : `WhatsApp message from ${senderName}:\n${text}\n\nRespond concisely for WhatsApp (2-4 sentences for simple answers). Do NOT use markdown formatting.`;
+  // Build per-agent prompt (WhatsApp always goes to Claw)
+  const fullTask = buildAgentTask("claw", text, "whatsapp");
 
   try {
-    const result = await runTask(fullTask, "bear");
-    const response = result.result || "Sorry, I couldn't process that. Try again?";
+    const result = await runTask(fullTask, "claw");
+    const raw = result.result || "Sorry, I couldn't process that. Try again?";
+    const { text: response } = processAgentResponse("claw", raw);
 
-    // Save outgoing message
-    saveMessage("bear", "out", response, "Bear");
-
-    // Send via WhatsApp
+    saveMessage("claw", "out", response, "Claw", null, "claw");
     await whatsapp.sendMessage(sender, response);
   } catch (err) {
     console.error("[pipeline] Error processing message:", err.message);
-    await whatsapp.sendMessage(sender, "Bear ran into an issue. Give me a moment and try again.");
+    await whatsapp.sendMessage(sender, "Claw ran into an issue. Give me a moment and try again.");
   }
 });
 
@@ -517,6 +655,7 @@ async function start() {
       console.log("  Setup required — open the URL above to get started.\n");
     } else {
       console.log("  Dashboard is live. WhatsApp connecting...\n");
+      whatsapp.triggerWord = getConfig("whatsapp_trigger") || "@Claw";
       whatsapp.connect().catch(err => {
         console.error("[startup] WhatsApp connection failed:", err.message);
       });

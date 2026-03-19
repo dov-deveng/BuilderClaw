@@ -64,7 +64,57 @@ db.exec(`
     tokens_out INTEGER DEFAULT 0,
     timestamp INTEGER DEFAULT (unixepoch() * 1000)
   );
+
+  CREATE TABLE IF NOT EXISTS agents (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    role TEXT,
+    icon TEXT,
+    prompt_file TEXT,
+    enabled INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (unixepoch() * 1000)
+  );
+
+  CREATE TABLE IF NOT EXISTS agent_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updated_at INTEGER DEFAULT (unixepoch() * 1000),
+    UNIQUE(agent_id, key)
+  );
+
+  CREATE TABLE IF NOT EXISTS agent_skills (
+    agent_id TEXT NOT NULL,
+    skill_id TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    config TEXT,
+    PRIMARY KEY (agent_id, skill_id)
+  );
 `);
+
+// --- Migrate: add agent_id column to messages if missing ---
+try {
+  const cols = db.prepare("PRAGMA table_info(messages)").all();
+  if (!cols.find(c => c.name === "agent_id")) {
+    db.exec("ALTER TABLE messages ADD COLUMN agent_id TEXT DEFAULT 'claw'");
+  }
+} catch {}
+
+// --- Seed default agents ---
+const DEFAULT_AGENTS = [
+  { id: "claw", name: "Claw", role: "Your main point of contact. Routes tasks, answers questions.", icon: "/assets/claw-mascot.png", prompt_file: "bear.md" },
+  { id: "pm", name: "PM", role: "Schedules, timelines, task tracking, punch lists.", icon: "📋", prompt_file: "pm.md" },
+  { id: "estimator", name: "Estimator", role: "Takeoffs, material estimates, labor calcs, bids.", icon: "📐", prompt_file: "estimator.md" },
+  { id: "accounts", name: "Accounts", role: "Invoicing, payments, lien waivers, budgets.", icon: "💰", prompt_file: "accounts.md" },
+  { id: "safety", name: "Safety", role: "OSHA compliance, toolbox talks, incident reports.", icon: "🦺", prompt_file: "safety.md" },
+  { id: "marketing", name: "Marketing", role: "Social media, proposals, client outreach, brand.", icon: "📣", prompt_file: "marketing.md" },
+];
+
+const seedAgent = db.prepare("INSERT OR IGNORE INTO agents (id, name, role, icon, prompt_file) VALUES (?, ?, ?, ?, ?)");
+for (const a of DEFAULT_AGENTS) {
+  seedAgent.run(a.id, a.name, a.role, a.icon, a.prompt_file);
+}
 
 // --- Config ---
 export function getConfig(key) {
@@ -89,13 +139,16 @@ export function saveCompany(data) {
 }
 
 // --- Messages ---
-export function saveMessage(role, direction, content, sender, metadata) {
+export function saveMessage(role, direction, content, sender, metadata, agentId = "claw") {
   return db.prepare(
-    "INSERT INTO messages (role, direction, content, sender, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(role, direction, content, sender || null, Date.now(), metadata ? JSON.stringify(metadata) : null);
+    "INSERT INTO messages (role, direction, content, sender, timestamp, metadata, agent_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(role, direction, content, sender || null, Date.now(), metadata ? JSON.stringify(metadata) : null, agentId);
 }
 
-export function getMessages(limit = 50, offset = 0) {
+export function getMessages(limit = 50, offset = 0, agentId = null) {
+  if (agentId) {
+    return db.prepare("SELECT * FROM messages WHERE agent_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?").all(agentId, limit, offset);
+  }
   return db.prepare("SELECT * FROM messages ORDER BY timestamp DESC LIMIT ? OFFSET ?").all(limit, offset);
 }
 
@@ -103,8 +156,74 @@ export function getMessagesByRole(role, limit = 20) {
   return db.prepare("SELECT * FROM messages WHERE role = ? ORDER BY timestamp DESC LIMIT ?").all(role, limit);
 }
 
+export function getRecentAgentMessages(agentId, limit = 10) {
+  return db.prepare("SELECT * FROM messages WHERE agent_id = ? ORDER BY timestamp DESC LIMIT ?").all(agentId, limit);
+}
+
 export function getMessageCount() {
   return db.prepare("SELECT COUNT(*) as count FROM messages").get().count;
+}
+
+// --- Agents ---
+export function getAgents() {
+  return db.prepare("SELECT * FROM agents WHERE enabled = 1 ORDER BY created_at").all();
+}
+
+export function getAgent(id) {
+  return db.prepare("SELECT * FROM agents WHERE id = ?").get(id);
+}
+
+export function createAgent(data) {
+  return db.prepare(
+    "INSERT OR REPLACE INTO agents (id, name, role, icon, prompt_file, enabled) VALUES (?, ?, ?, ?, ?, 1)"
+  ).run(data.id, data.name, data.role || "", data.icon || "🤖", data.prompt_file || null);
+}
+
+export function updateAgent(id, data) {
+  const ALLOWED = new Set(["name", "role", "icon", "prompt_file", "enabled"]);
+  const fields = [];
+  const values = [];
+  for (const [k, v] of Object.entries(data)) {
+    if (!ALLOWED.has(k)) continue;
+    fields.push(`${k} = ?`);
+    values.push(v);
+  }
+  if (fields.length === 0) return;
+  values.push(id);
+  db.prepare(`UPDATE agents SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+}
+
+// --- Agent Memory ---
+export function getAgentMemory(agentId) {
+  return db.prepare("SELECT key, value, updated_at FROM agent_memory WHERE agent_id = ? ORDER BY updated_at DESC").all(agentId);
+}
+
+export function setAgentMemory(agentId, key, value) {
+  db.prepare(
+    "INSERT INTO agent_memory (agent_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(agent_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+  ).run(agentId, key, value, Date.now());
+}
+
+export function deleteAgentMemory(agentId, key) {
+  db.prepare("DELETE FROM agent_memory WHERE agent_id = ? AND key = ?").run(agentId, key);
+}
+
+export function getAgentMemorySummary(agentId) {
+  const memories = db.prepare("SELECT key, value FROM agent_memory WHERE agent_id = ? ORDER BY updated_at DESC LIMIT 20").all(agentId);
+  if (memories.length === 0) return "";
+  return "YOUR SAVED MEMORIES (use these naturally, don't announce them):\n" +
+    memories.map(m => `- ${m.key}: ${m.value}`).join("\n");
+}
+
+// --- Agent Skills ---
+export function getAgentSkills(agentId) {
+  return db.prepare("SELECT * FROM agent_skills WHERE agent_id = ? AND enabled = 1").all(agentId);
+}
+
+export function setAgentSkill(agentId, skillId, enabled, config = null) {
+  db.prepare(
+    "INSERT INTO agent_skills (agent_id, skill_id, enabled, config) VALUES (?, ?, ?, ?) ON CONFLICT(agent_id, skill_id) DO UPDATE SET enabled = excluded.enabled, config = excluded.config"
+  ).run(agentId, skillId, enabled ? 1 : 0, config);
 }
 
 // --- Projects ---

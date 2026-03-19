@@ -459,6 +459,204 @@
     .welcome-msg h2 { font-size: 20px; color: #2d2d2d; margin-bottom: 8px; }
     .welcome-msg p { font-size: 14px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
 
+    /* Collapsible team section */
+    .team-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8e8e93;
+      cursor: pointer;
+      user-select: none;
+      border: none;
+      background: none;
+      width: 100%;
+    }
+    .team-toggle:hover { color: #6b6b6b; }
+    .team-toggle .arrow {
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 10px;
+    }
+    .team-toggle .arrow.collapsed { transform: rotate(-90deg); }
+    .team-agents {
+      overflow: hidden;
+      transition: max-height 0.25s ease;
+    }
+    .team-agents.collapsed {
+      max-height: 0 !important;
+    }
+
+    /* Sidebar nav */
+    .sidebar-nav {
+      display: flex;
+      border-top: 1px solid #e5e2dc;
+      padding: 4px 8px;
+      gap: 2px;
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 4px;
+      border: none;
+      background: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #8e8e93;
+      font-size: 10px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .nav-btn:hover { background: #e8e5e0; }
+    .nav-btn.active { color: #c9a87c; background: #faf5ee; }
+
+    /* Tab panels */
+    .tab-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      height: 100vh;
+      background: #fff;
+      overflow-y: auto;
+    }
+    .tab-panel.active { display: flex; }
+    .tab-panel-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e5e2dc;
+      -webkit-app-region: drag;
+    }
+    .tab-panel-header h2 { font-size: 22px; font-weight: 700; }
+    .tab-panel-header p { font-size: 13px; color: #8e8e93; margin-top: 4px; }
+    .tab-panel-body { padding: 24px; flex: 1; overflow-y: auto; }
+
+    /* Skill cards */
+    .skill-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1.5px solid #e5e2dc;
+      margin-bottom: 8px;
+      transition: border 0.2s;
+    }
+    .skill-card:hover { border-color: #c9a87c; }
+    .skill-card.connected { border-color: #7ab07a; background: #f8fcf8; }
+    .skill-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: #f5f3ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .skill-info { flex: 1; }
+    .skill-name { font-size: 14px; font-weight: 600; }
+    .skill-desc { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    .skill-action {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1.5px solid #e5e2dc;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #6b6b6b;
+      transition: all 0.15s;
+    }
+    .skill-action:hover { border-color: #c9a87c; color: #c9a87c; }
+    .skill-action.connected { background: #d4edda; border-color: #7ab07a; color: #155724; cursor: default; }
+    .skill-section-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #8e8e93; margin: 20px 0 10px; padding-left: 4px;
+    }
+    .skill-section-title:first-child { margin-top: 0; }
+
+    /* Agent cards */
+    .agent-card-lg {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1.5px solid #e5e2dc;
+      margin-bottom: 8px;
+    }
+    .agent-card-lg .agent-icon {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #f5f3ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .agent-card-lg .agent-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .agent-card-lg .agent-meta { flex: 1; }
+    .agent-card-lg .agent-title { font-size: 15px; font-weight: 600; }
+    .agent-card-lg .agent-desc { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    .agent-status {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .agent-status.active { background: #d4edda; color: #155724; }
+    .agent-status.idle { background: #e5e2dc; color: #6b6b6b; }
+    .add-agent-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1.5px dashed #e5e2dc;
+      background: none;
+      width: 100%;
+      cursor: pointer;
+      color: #8e8e93;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+      margin-top: 8px;
+    }
+    .add-agent-btn:hover { border-color: #c9a87c; color: #c9a87c; }
+
+    /* Settings enhancements */
+    .sett-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1.5px solid #e5e2dc;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #6b6b6b;
+      transition: all 0.15s;
+    }
+    .sett-btn:hover { border-color: #c9a87c; color: #c9a87c; }
+    .sett-input {
+      padding: 8px 12px;
+      border: 1.5px solid #e5e2dc;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      background: #faf9f7;
+      width: 160px;
+    }
+    .sett-input:focus { border-color: #c9a87c; background: #fff; }
+
     /* Hidden file input */
     #fileInput { display: none; }
   </style>
@@ -478,21 +676,31 @@
       <input type="text" placeholder="Search messages..." id="searchInput">
     </div>
     <div class="conversations" id="convList">
-      <div class="conv-item active" onclick="selectConv('bear')">
-        <div class="conv-avatar"><img src="/assets/claw-mascot.png" alt="Claw"></div>
-        <div class="conv-info">
-          <div class="conv-name">Bear</div>
-          <div class="conv-preview" id="bearPreview">Your AI office manager</div>
-        </div>
-        <div class="conv-time" id="bearTime"></div>
-      </div>
+      <!-- Agents loaded dynamically -->
+    </div>
+    <div class="sidebar-nav">
+      <button class="nav-btn active" id="navChat" onclick="switchTab('chat')" title="Chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="nav-btn" id="navSkills" onclick="switchTab('skills')" title="Skills">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span>Skills</span>
+      </button>
+      <button class="nav-btn" id="navAgents" onclick="switchTab('agents')" title="Agents">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Agents</span>
+      </button>
+      <button class="nav-btn" id="navSettings" onclick="switchTab('settings')" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
     </div>
     <div class="sidebar-footer">
       <div class="status">
         <span class="status-dot" id="waDot"></span>
         <span id="waLabel">Checking...</span>
       </div>
-      <button class="settings-btn" onclick="toggleSettings()" title="Settings">⚙</button>
     </div>
   </aside>
 
@@ -502,23 +710,15 @@
     <div class="chat-header">
       <div class="chat-header-avatar"><img src="/assets/claw-mascot.png" alt="Claw"></div>
       <div class="chat-header-info">
-        <div class="chat-header-name">Bear</div>
+        <div class="chat-header-name">Claw</div>
         <div class="chat-header-status" id="bearStatus">Online</div>
       </div>
-      <div class="chat-header-actions">
-        <button class="header-btn" onclick="toggleSettings()" title="Settings">⚙</button>
-      </div>
+      <div class="chat-header-actions"></div>
     </div>
 
     <!-- Messages -->
     <div class="messages" id="messages">
-      <div class="welcome-msg" id="welcomeMsg">
-        <div class="bear-icon"><img src="/assets/claw-mascot.png" alt="Claw"></div>
-        <h2>Hey there!</h2>
-        <p>I'm Bear, your AI office manager. Ask me anything about your projects,
-           estimates, safety compliance, or billing. I'll handle it or get the right
-           specialist on it.</p>
-      </div>
+      <!-- Loaded dynamically -->
     </div>
 
     <!-- Typing indicator -->
@@ -534,72 +734,170 @@
       <div class="attachments" id="attachments"></div>
       <div class="input-row">
         <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">+</button>
-        <textarea id="msgInput" rows="1" placeholder="Message Bear..."
+        <textarea id="msgInput" rows="1" placeholder="Message Claw..."
                   onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">↑</button>
       </div>
     </div>
     <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
 
-    <!-- Settings panel -->
-    <div class="settings-panel" id="settingsPanel">
-      <div class="settings-header">
-        <h2>Settings</h2>
-        <button class="settings-close" onclick="toggleSettings()">✕</button>
+  </main>
+
+  <!-- SKILLS TAB -->
+  <div class="tab-panel" id="tabSkills">
+    <div class="tab-panel-header">
+      <h2>Skills</h2>
+      <p>Connect tools and services to expand what Claw can do.</p>
+    </div>
+    <div class="tab-panel-body">
+      <div class="skill-section-title">Available</div>
+      <div class="skill-card" data-skill="trello">
+        <div class="skill-icon">📋</div>
+        <div class="skill-info"><div class="skill-name">Trello</div><div class="skill-desc">Project boards, task tracking, punch lists</div></div>
+        <button class="skill-action" onclick="setupSkill('trello')">Setup</button>
       </div>
-      <div class="settings-body">
-        <div class="settings-section">
-          <h3>WhatsApp</h3>
-          <div class="setting-row">
-            <span class="setting-label">Status</span>
-            <span class="setting-value" id="settWaStatus">--</span>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">Phone</span>
-            <span class="setting-value" id="settWaPhone">--</span>
-          </div>
-        </div>
+      <div class="skill-card" data-skill="slack">
+        <div class="skill-icon">💬</div>
+        <div class="skill-info"><div class="skill-name">Slack</div><div class="skill-desc">Team communication, notifications</div></div>
+        <button class="skill-action" onclick="setupSkill('slack')">Setup</button>
+      </div>
+      <div class="skill-card" data-skill="notion">
+        <div class="skill-icon">📝</div>
+        <div class="skill-info"><div class="skill-name">Notion</div><div class="skill-desc">Documentation, SOPs, project wikis</div></div>
+        <button class="skill-action" onclick="setupSkill('notion')">Setup</button>
+      </div>
+      <div class="skill-card" data-skill="google">
+        <div class="skill-icon">🔷</div>
+        <div class="skill-info"><div class="skill-name">Google Workspace</div><div class="skill-desc">Drive, Docs, Sheets, Calendar</div></div>
+        <button class="skill-action" onclick="setupSkill('google')">Setup</button>
+      </div>
+      <div class="skill-card" data-skill="github">
+        <div class="skill-icon">🐙</div>
+        <div class="skill-info"><div class="skill-name">GitHub</div><div class="skill-desc">Repos, issues, pull requests</div></div>
+        <button class="skill-action" onclick="setupSkill('github')">Setup</button>
+      </div>
+      <div class="skill-card" data-skill="discord">
+        <div class="skill-icon">🎮</div>
+        <div class="skill-info"><div class="skill-name">Discord</div><div class="skill-desc">Team chat, announcements</div></div>
+        <button class="skill-action" onclick="setupSkill('discord')">Setup</button>
+      </div>
+      <div class="skill-card" data-skill="weather">
+        <div class="skill-icon">🌤</div>
+        <div class="skill-info"><div class="skill-name">Weather</div><div class="skill-desc">Jobsite forecasts for scheduling</div></div>
+        <button class="skill-action" onclick="setupSkill('weather')">Setup</button>
+      </div>
 
-        <div class="settings-section">
-          <h3>Company</h3>
-          <div id="settCompany">Loading...</div>
-        </div>
+      <div class="skill-section-title">Coming Soon</div>
+      <div class="skill-card" style="opacity:0.5;">
+        <div class="skill-icon">📦</div>
+        <div class="skill-info"><div class="skill-name">Dropbox</div><div class="skill-desc">File storage and sharing</div></div>
+        <button class="skill-action" disabled>Soon</button>
+      </div>
+      <div class="skill-card" style="opacity:0.5;">
+        <div class="skill-icon">📊</div>
+        <div class="skill-info"><div class="skill-name">Monday.com</div><div class="skill-desc">Project management boards</div></div>
+        <button class="skill-action" disabled>Soon</button>
+      </div>
+      <div class="skill-card" style="opacity:0.5;">
+        <div class="skill-icon">💵</div>
+        <div class="skill-info"><div class="skill-name">QuickBooks</div><div class="skill-desc">Accounting, invoicing, payroll</div></div>
+        <button class="skill-action" disabled>Soon</button>
+      </div>
+    </div>
+  </div>
 
-        <div class="settings-section">
-          <h3>Agents</h3>
-          <div class="agent-grid" id="agentGrid"></div>
-        </div>
+  <!-- AGENTS TAB -->
+  <div class="tab-panel" id="tabAgents">
+    <div class="tab-panel-header">
+      <h2>Agents</h2>
+      <p>Your AI team. Each agent specializes in a different part of your business.</p>
+    </div>
+    <div class="tab-panel-body" id="agentsBody">
+      <p style="color:#8e8e93; font-size:13px;">Loading agents...</p>
+    </div>
+  </div>
 
-        <div class="settings-section">
-          <h3>System</h3>
-          <div class="setting-row">
-            <span class="setting-label">Version</span>
-            <span class="setting-value">1.0.0</span>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">Re-run setup</span>
-            <a href="/setup" style="font-size:14px; color:#c9a87c;">Open Setup</a>
-          </div>
+  <!-- SETTINGS TAB -->
+  <div class="tab-panel" id="tabSettings">
+    <div class="tab-panel-header">
+      <h2>Settings</h2>
+      <p>Manage connections, company info, and system configuration.</p>
+    </div>
+    <div class="tab-panel-body">
+      <div class="settings-section">
+        <h3>WhatsApp</h3>
+        <div class="setting-row">
+          <span class="setting-label">Status</span>
+          <span class="setting-value" id="settWaStatus">--</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Phone</span>
+          <span class="setting-value" id="settWaPhone">--</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Trigger Word</span>
+          <span class="setting-value"><input class="sett-input" id="settTrigger" value="@Claw" onchange="saveTrigger()"></span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Reconnect</span>
+          <button class="sett-btn" id="settWaReconnectBtn" onclick="reconnectWhatsApp()">Scan QR Code</button>
+        </div>
+        <div id="settQrArea" style="display:none; text-align:center; padding:16px 0;">
+          <div class="spinner" id="settQrSpinner" style="margin:0 auto;"></div>
+          <img id="settQrImg" style="display:none; max-width:240px; border-radius:12px; margin:0 auto;">
+          <p id="settQrLabel" style="font-size:12px; color:#8e8e93; margin-top:8px;">Generating QR code...</p>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Claude Auth</h3>
+        <div class="setting-row">
+          <span class="setting-label">Method</span>
+          <span class="setting-value" id="settAuthMode">--</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Change</span>
+          <a href="/setup" style="font-size:13px; color:#c9a87c;">Re-run Setup</a>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Company</h3>
+        <div id="settCompany">Loading...</div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Documents</h3>
+        <p style="font-size:13px; color:#8e8e93; margin-bottom:12px;">Give Claw access to your files so it can reference specs, contracts, and plans.</p>
+        <div class="setting-row">
+          <span class="setting-label">Google Drive</span>
+          <button class="sett-btn" id="settGoogleBtn" onclick="connectGoogle()">Connect</button>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Upload Files</span>
+          <button class="sett-btn" onclick="document.getElementById('docUpload').click()">Upload</button>
+        </div>
+        <input type="file" id="docUpload" multiple style="display:none;" onchange="handleDocUpload(this.files)">
+      </div>
+
+      <div class="settings-section">
+        <h3>System</h3>
+        <div class="setting-row">
+          <span class="setting-label">Version</span>
+          <span class="setting-value">1.0.0</span>
         </div>
       </div>
     </div>
-  </main>
+  </div>
 
   <script>
     // --- State ---
     let pendingFiles = [];
     let currentJobId = null;
-    let messages = [];
-    let lastMsgId = 0;
+    let currentAgent = 'claw';
+    let agentList = [];
 
     const CLAW_IMG = '/assets/claw-mascot.png';
-    const ROLES = {
-      bear: { name: 'Claw', role: 'Main Agent' },
-      pm: { name: 'PM', role: 'Project Manager' },
-      estimator: { name: 'Estimator', role: 'Cost Estimates' },
-      accounts: { name: 'Accounts', role: 'Billing' },
-      safety: { name: 'Safety', role: 'OSHA Compliance' },
-    };
 
     // --- Messaging ---
     function handleKey(e) {
@@ -633,18 +931,18 @@
       clearAttachments();
 
       // Hide welcome
-      const welcome = document.getElementById('welcomeMsg');
-      if (welcome) welcome.style.display = 'none';
+      const welcome = document.querySelector('.welcome-msg');
+      if (welcome) welcome.remove();
 
       // Show typing
       showTyping(true);
 
-      // Send to Bear
+      // Send to selected agent
       try {
         const r = await fetch('/api/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: fullMsg }),
+          body: JSON.stringify({ message: fullMsg, agent: currentAgent }),
         });
         const d = await r.json();
         if (d.jobId) {
@@ -664,7 +962,11 @@
           const d = await r.json();
           if (d.status === 'done') {
             showTyping(false);
-            addMessage('bear', d.result);
+            let response = d.result;
+            if (d.files && d.files.length > 0) {
+              response += '\n\nSaved files: ' + d.files.map(f => f).join(', ');
+            }
+            addMessage('agent', response);
             currentJobId = null;
             return;
           }
@@ -683,6 +985,19 @@
       check();
     }
 
+    function getAgentIcon(agentId) {
+      const agent = agentList.find(a => a.id === agentId);
+      if (!agent) return CLAW_IMG;
+      if (agent.icon && agent.icon.startsWith('/')) return agent.icon;
+      return null; // emoji
+    }
+
+    function getAgentEmoji(agentId) {
+      const agent = agentList.find(a => a.id === agentId);
+      if (!agent || (agent.icon && agent.icon.startsWith('/'))) return '';
+      return agent.icon || '🤖';
+    }
+
     function addMessage(role, text) {
       const container = document.getElementById('messages');
       const isUser = role === 'user';
@@ -692,7 +1007,13 @@
 
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
-      avatar.innerHTML = '<img src="' + CLAW_IMG + '" alt="Claw">';
+      const iconUrl = getAgentIcon(currentAgent);
+      if (iconUrl) {
+        avatar.innerHTML = '<img src="' + iconUrl + '" alt="Agent">';
+      } else {
+        avatar.textContent = getAgentEmoji(currentAgent);
+        avatar.style.fontSize = '18px';
+      }
 
       const wrapper = document.createElement('div');
 
@@ -714,8 +1035,10 @@
       container.scrollTop = container.scrollHeight;
 
       // Update sidebar preview
-      document.getElementById('bearPreview').textContent = text.slice(0, 40) + (text.length > 40 ? '...' : '');
-      document.getElementById('bearTime').textContent = formatTime(new Date());
+      const preview = document.getElementById('preview-' + currentAgent);
+      const timeEl = document.getElementById('time-' + currentAgent);
+      if (preview) preview.textContent = text.slice(0, 40) + (text.length > 40 ? '...' : '');
+      if (timeEl) timeEl.textContent = formatTime(new Date());
     }
 
     function showTyping(show) {
@@ -782,13 +1105,26 @@
       if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
     });
 
-    // --- Settings ---
-    function toggleSettings() {
-      const panel = document.getElementById('settingsPanel');
-      panel.classList.toggle('visible');
-      if (panel.classList.contains('visible')) loadSettings();
+    // --- Tab Navigation ---
+    let currentTab = 'chat';
+
+    function switchTab(tab) {
+      currentTab = tab;
+      // Update nav buttons
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('nav' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+      // Show/hide panels
+      const chatArea = document.querySelector('.chat-area');
+      chatArea.style.display = tab === 'chat' ? 'flex' : 'none';
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      if (tab !== 'chat') {
+        document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+      }
+      if (tab === 'settings') loadSettings();
+      if (tab === 'agents') loadAgentsTab();
     }
 
+    // --- Settings ---
     async function loadSettings() {
       try {
         const r = await fetch('/api/status');
@@ -809,21 +1145,134 @@
         } else {
           compEl.innerHTML = '<span style="font-size:13px;color:#8e8e93;">Not configured</span>';
         }
+      } catch {}
+    }
 
-        // Agents
-        const agents = d.agents || {};
-        const grid = document.getElementById('agentGrid');
-        grid.innerHTML = Object.entries(ROLES).map(([key, info]) => {
-          const a = agents[key] || {};
-          const status = a.status || 'idle';
-          return `
-            <div class="agent-card">
-              <div class="agent-name"><img src="${CLAW_IMG}" alt="Claw" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;border-radius:50%;">${info.name}</div>
-              <div class="agent-role">${info.role}</div>
-              <span class="agent-status-badge ${status}">${status}</span>
+    async function saveTrigger() {
+      const trigger = document.getElementById('settTrigger').value.trim();
+      if (!trigger) return;
+      try {
+        await fetch('/api/setup/save-trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trigger }),
+        });
+      } catch {}
+    }
+
+    let settWaPolling = null;
+
+    async function reconnectWhatsApp() {
+      const area = document.getElementById('settQrArea');
+      const btn = document.getElementById('settWaReconnectBtn');
+      const spinner = document.getElementById('settQrSpinner');
+      const img = document.getElementById('settQrImg');
+      const label = document.getElementById('settQrLabel');
+
+      area.style.display = 'block';
+      spinner.style.display = 'block';
+      img.style.display = 'none';
+      label.textContent = 'Connecting...';
+      btn.disabled = true;
+      btn.textContent = 'Scanning...';
+
+      try { await fetch('/api/setup/connect-whatsapp', { method: 'POST' }); } catch {}
+
+      if (settWaPolling) clearInterval(settWaPolling);
+      const pollQr = async () => {
+        try {
+          const r = await fetch('/api/setup/whatsapp-qr');
+          const d = await r.json();
+          if (d.status === 'connected') {
+            area.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = 'Scan QR Code';
+            document.getElementById('settWaStatus').textContent = 'connected';
+            document.getElementById('settWaPhone').textContent = d.phoneNumber || '--';
+            if (settWaPolling) { clearInterval(settWaPolling); settWaPolling = null; }
+            return;
+          }
+          if (d.qr) {
+            spinner.style.display = 'none';
+            img.style.display = 'block';
+            img.src = d.qr;
+            label.textContent = 'Scan with WhatsApp > Settings > Linked Devices';
+          }
+        } catch {}
+      };
+      pollQr();
+      settWaPolling = setInterval(pollQr, 3000);
+    }
+
+    function connectGoogle() {
+      alert('Google Workspace integration coming in the next update. Stay tuned!');
+    }
+
+    function handleDocUpload(files) {
+      alert('Uploaded ' + files.length + ' file(s). Document processing coming in the next update.');
+    }
+
+    // --- Skills ---
+    function setupSkill(name) {
+      const instructions = {
+        trello: 'To connect Trello:\n1. Go to trello.com/app-key\n2. Copy your API Key and Token\n3. Claw will use these to manage your boards.',
+        slack: 'To connect Slack:\n1. Create a Slack app at api.slack.com/apps\n2. Add Bot Token scopes\n3. Install to your workspace and copy the Bot Token.',
+        notion: 'To connect Notion:\n1. Go to notion.so/my-integrations\n2. Create an integration\n3. Copy the Internal Integration Token.',
+        google: 'Google Workspace integration coming in the next update!',
+        github: 'To connect GitHub:\n1. Go to github.com/settings/tokens\n2. Generate a Personal Access Token\n3. Give it repo access.',
+        discord: 'To connect Discord:\n1. Go to discord.com/developers/applications\n2. Create a Bot\n3. Copy the Bot Token.',
+        weather: 'Weather works out of the box! Just ask Claw about weather for your jobsite.',
+      };
+      alert(instructions[name] || 'Setup instructions coming soon.');
+    }
+
+    // --- Agents ---
+    async function loadAgentsTab() {
+      const body = document.getElementById('agentsBody');
+      try {
+        const r = await fetch('/api/agents');
+        const agents = await r.json();
+        body.innerHTML = '';
+        for (const agent of agents) {
+          const isImg = agent.icon && agent.icon.startsWith('/');
+          const card = document.createElement('div');
+          card.className = 'agent-card-lg';
+          card.innerHTML = `
+            <div class="agent-icon" ${isImg ? '' : 'style="font-size:22px;"'}>
+              ${isImg ? '<img src="' + escHtml(agent.icon) + '" alt="">' : escHtml(agent.icon || '🤖')}
             </div>
+            <div class="agent-meta">
+              <div class="agent-title">${escHtml(agent.name)}</div>
+              <div class="agent-desc">${escHtml(agent.role || '')}</div>
+            </div>
+            <span class="agent-status active">Active</span>
           `;
-        }).join('');
+          card.style.cursor = 'pointer';
+          card.onclick = () => selectAgent(agent.id);
+          body.appendChild(card);
+        }
+        const btn = document.createElement('button');
+        btn.className = 'add-agent-btn';
+        btn.textContent = '+ Add Agent';
+        btn.onclick = addAgent;
+        body.appendChild(btn);
+      } catch {}
+    }
+
+    async function addAgent() {
+      const name = prompt('Agent name (e.g. "Legal", "HR", "Logistics"):');
+      if (!name || !name.trim()) return;
+      const desc = prompt('What does this agent do?');
+      if (!desc) return;
+      const id = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+      try {
+        await fetch('/api/agents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name: name.trim(), role: desc.trim(), icon: '🤖' }),
+        });
+        await loadAgents();
+        await loadAgentsTab();
       } catch {}
     }
 
@@ -850,24 +1299,151 @@
       } catch {}
     }
 
+    // --- Load agents into sidebar ---
+    let teamCollapsed = false;
+
+    function buildAgentItem(agent) {
+      const isImg = agent.icon && agent.icon.startsWith('/');
+      const avatarContent = isImg
+        ? '<img src="' + escHtml(agent.icon) + '" alt="' + escHtml(agent.name) + '">'
+        : '<span style="font-size:22px;">' + escHtml(agent.icon || '🤖') + '</span>';
+      const item = document.createElement('div');
+      item.className = 'conv-item' + (agent.id === currentAgent ? ' active' : '');
+      item.onclick = () => selectAgent(agent.id);
+      item.id = 'conv-' + agent.id;
+      item.innerHTML = `
+        <div class="conv-avatar">${avatarContent}</div>
+        <div class="conv-info">
+          <div class="conv-name">${escHtml(agent.name)}</div>
+          <div class="conv-preview" id="preview-${agent.id}">${escHtml(agent.role)}</div>
+        </div>
+        <div class="conv-time" id="time-${agent.id}"></div>
+      `;
+      return item;
+    }
+
+    function toggleTeam() {
+      teamCollapsed = !teamCollapsed;
+      const section = document.getElementById('teamAgents');
+      const arrow = document.getElementById('teamArrow');
+      if (teamCollapsed) {
+        section.classList.add('collapsed');
+        arrow.classList.add('collapsed');
+      } else {
+        section.classList.remove('collapsed');
+        arrow.classList.remove('collapsed');
+      }
+    }
+
+    async function loadAgents() {
+      try {
+        const r = await fetch('/api/agents');
+        agentList = await r.json();
+        const convList = document.getElementById('convList');
+        convList.innerHTML = '';
+
+        // Claw always on top, not collapsible
+        const claw = agentList.find(a => a.id === 'claw');
+        if (claw) {
+          convList.appendChild(buildAgentItem(claw));
+        }
+
+        // Team section — collapsible
+        const team = agentList.filter(a => a.id !== 'claw');
+        if (team.length > 0) {
+          const toggle = document.createElement('button');
+          toggle.className = 'team-toggle';
+          toggle.onclick = toggleTeam;
+          toggle.innerHTML = '<span class="arrow' + (teamCollapsed ? ' collapsed' : '') + '" id="teamArrow">▼</span> Team (' + team.length + ')';
+          convList.appendChild(toggle);
+
+          const section = document.createElement('div');
+          section.className = 'team-agents' + (teamCollapsed ? ' collapsed' : '');
+          section.id = 'teamAgents';
+          section.style.maxHeight = (team.length * 70) + 'px';
+          for (const agent of team) {
+            section.appendChild(buildAgentItem(agent));
+          }
+          convList.appendChild(section);
+        }
+      } catch {}
+    }
+
+    function selectAgent(agentId) {
+      currentAgent = agentId;
+      // Update sidebar selection
+      document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+      const item = document.getElementById('conv-' + agentId);
+      if (item) item.classList.add('active');
+      // Update chat header
+      const agent = agentList.find(a => a.id === agentId);
+      if (agent) {
+        document.querySelector('.chat-header-name').textContent = agent.name;
+        const headerAvatar = document.querySelector('.chat-header-avatar');
+        if (agent.icon && agent.icon.startsWith('/')) {
+          const img = document.createElement('img');
+          img.src = agent.icon;
+          img.alt = agent.name;
+          headerAvatar.innerHTML = '';
+          headerAvatar.appendChild(img);
+        } else {
+          headerAvatar.textContent = agent.icon || '🤖';
+        }
+        document.getElementById('msgInput').placeholder = 'Message ' + agent.name + '...';
+      }
+      // Switch to chat tab and reload messages
+      switchTab('chat');
+      loadMessages();
+    }
+
     // --- Load existing messages ---
     async function loadMessages() {
       try {
-        const r = await fetch('/api/messages?limit=50');
+        const r = await fetch('/api/messages?limit=50&agent=' + currentAgent);
         const msgs = await r.json();
-        if (msgs.length === 0) return;
-
-        document.getElementById('welcomeMsg').style.display = 'none';
         const container = document.getElementById('messages');
+        // Clear existing messages
+        container.innerHTML = '';
+
+        if (msgs.length === 0) {
+          const agent = agentList.find(a => a.id === currentAgent);
+          const welcome = document.createElement('div');
+          welcome.className = 'welcome-msg';
+          const iconDiv = document.createElement('div');
+          iconDiv.className = 'bear-icon';
+          if (agent && agent.icon && agent.icon.startsWith('/')) {
+            const img = document.createElement('img');
+            img.src = agent.icon;
+            img.alt = '';
+            iconDiv.appendChild(img);
+          } else {
+            iconDiv.innerHTML = '<span style="font-size:48px;">' + escHtml(agent?.icon || '🤖') + '</span>';
+          }
+          welcome.appendChild(iconDiv);
+          const h2 = document.createElement('h2');
+          h2.textContent = 'Hey there!';
+          welcome.appendChild(h2);
+          const p = document.createElement('p');
+          p.textContent = "I'm " + (agent?.name || 'Claw') + ", " + (agent?.role || 'your AI business partner') + ". What can I help you with?";
+          welcome.appendChild(p);
+          container.appendChild(welcome);
+          return;
+        }
 
         msgs.reverse().forEach(m => {
-          const role = (m.direction === 'out' && m.role === 'user') ? 'user' : 'bear';
+          const role = (m.direction === 'out' && m.role === 'user') ? 'user' : 'agent';
           const row = document.createElement('div');
-          row.className = 'msg-row ' + role;
+          row.className = 'msg-row ' + (role === 'user' ? 'user' : 'bear');
 
           const avatar = document.createElement('div');
           avatar.className = 'msg-avatar';
-          avatar.innerHTML = '<img src="' + CLAW_IMG + '" alt="Claw">';
+          const iconUrl = getAgentIcon(currentAgent);
+          if (iconUrl) {
+            avatar.innerHTML = '<img src="' + iconUrl + '" alt="">';
+          } else {
+            avatar.textContent = getAgentEmoji(currentAgent);
+            avatar.style.fontSize = '18px';
+          }
 
           const wrapper = document.createElement('div');
           const bubble = document.createElement('div');
@@ -876,7 +1452,7 @@
 
           const time = document.createElement('div');
           time.className = 'msg-time';
-          time.textContent = m.created_at ? formatTime(new Date(m.created_at)) : '';
+          time.textContent = m.timestamp ? formatTime(new Date(m.timestamp)) : '';
 
           wrapper.appendChild(bubble);
           wrapper.appendChild(time);
@@ -888,11 +1464,13 @@
 
         container.scrollTop = container.scrollHeight;
 
-        // Update sidebar
+        // Update sidebar preview
         const last = msgs[msgs.length - 1];
         if (last) {
-          document.getElementById('bearPreview').textContent = last.content.slice(0, 40);
-          document.getElementById('bearTime').textContent = last.created_at ? formatTime(new Date(last.created_at)) : '';
+          const preview = document.getElementById('preview-' + currentAgent);
+          const timeEl = document.getElementById('time-' + currentAgent);
+          if (preview) preview.textContent = last.content.slice(0, 40) + (last.content.length > 40 ? '...' : '');
+          if (timeEl) timeEl.textContent = last.timestamp ? formatTime(new Date(last.timestamp)) : '';
         }
       } catch {}
     }
@@ -913,12 +1491,13 @@
     }
 
     // --- Init ---
-    pollStatus();
-    loadMessages();
-    setInterval(pollStatus, 10000);
-
-    // Focus input
-    document.getElementById('msgInput').focus();
+    (async () => {
+      await loadAgents();
+      await loadMessages();
+      pollStatus();
+      setInterval(pollStatus, 10000);
+      document.getElementById('msgInput').focus();
+    })();
   </script>
 </body>
 </html>

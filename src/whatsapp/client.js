@@ -24,6 +24,12 @@ class WhatsAppClient extends EventEmitter {
   }
 
   async connect() {
+    // Clean up previous socket to prevent duplicate event handlers
+    if (this.sock) {
+      try { this.sock.ev.removeAllListeners(); } catch {}
+      this.sock = null;
+    }
+
     fs.mkdirSync(AUTH_DIR, { recursive: true });
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
     const { version } = await fetchLatestBaileysVersion();
@@ -83,10 +89,26 @@ class WhatsAppClient extends EventEmitter {
       if (type !== "notify") return;
 
       for (const msg of messages) {
-        // Skip messages from self, status updates, and reactions
-        if (msg.key.fromMe) continue;
+        // Skip status updates and reactions
         if (msg.key.remoteJid === "status@broadcast") continue;
         if (msg.message?.reactionMessage) continue;
+
+        // Determine chat type
+        const jid = msg.key.remoteJid || "";
+        const isGroup = jid.endsWith("@g.us");
+        const isBroadcast = jid.endsWith("@broadcast") || jid.endsWith("@newsletter");
+        const myNumber = sock.user?.id?.split(":")[0] || sock.user?.id?.split("@")[0];
+        const isSelfChat = myNumber ? jid === (myNumber + "@s.whatsapp.net") : false;
+
+        // Skip broadcasts/newsletters entirely
+        if (isBroadcast) continue;
+
+        // Only respond in: (1) self-chat (notes to yourself), (2) groups with trigger word
+        // Block all random DMs from other people
+        if (!isSelfChat && !isGroup) continue;
+
+        // In groups, skip messages from self (avoid loops)
+        if (isGroup && msg.key.fromMe) continue;
 
         const text = msg.message?.conversation
           || msg.message?.extendedTextMessage?.text
@@ -95,13 +117,21 @@ class WhatsAppClient extends EventEmitter {
 
         if (!text.trim()) continue;
 
+        // Only respond when the trigger word is present
+        const trigger = this.triggerWord || "@Claw";
+        if (!text.toLowerCase().includes(trigger.toLowerCase())) continue;
+
+        // Strip the trigger word from the message before passing along
+        const cleanText = text.replace(new RegExp(trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "").trim();
+        if (!cleanText) continue;
+
         const sender = msg.key.remoteJid;
         const senderName = msg.pushName || sender.split("@")[0];
 
-        console.log(`[whatsapp] Message from ${senderName}: ${text.slice(0, 80)}`);
+        console.log(`[whatsapp] [${trigger}] Message from ${senderName}: ${cleanText.slice(0, 80)}`);
 
         this.emit("message", {
-          text: text.trim(),
+          text: cleanText,
           sender,
           senderName,
           timestamp: msg.messageTimestamp,
