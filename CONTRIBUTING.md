@@ -5,7 +5,7 @@ Thanks for wanting to help. Here's how.
 ## Setup for Development
 
 ```bash
-git clone https://github.com/dovcohen/BuilderClaw.git
+git clone https://github.com/dov-deveng/BuilderClaw.git
 cd BuilderClaw
 npm install
 docker build -t builderclaw-agent:latest .
