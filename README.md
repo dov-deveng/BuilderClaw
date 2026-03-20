@@ -17,7 +17,8 @@
 1. Download the `.dmg` file from the link above
 2. Open the `.dmg` and drag BuilderClaw into your Applications folder
 3. Double-click BuilderClaw in Applications
-4. Follow the setup wizard (takes about 5 minutes)
+4. **If macOS says the app "is damaged" or "can't be opened":** Open **System Settings** → **Privacy & Security** → scroll down and click **Open Anyway** next to the BuilderClaw message. You only have to do this once.
+5. Follow the setup wizard (takes about 5 minutes)
 
 You'll need [Docker Desktop](https://docker.com/products/docker-desktop) installed and a [Claude](https://claude.ai) subscription. The setup wizard walks you through everything.
 
