@@ -92,6 +92,22 @@ db.exec(`
     PRIMARY KEY (agent_id, skill_id)
   );
 
+  CREATE TABLE IF NOT EXISTS whatsapp_inbox (
+    id TEXT PRIMARY KEY,
+    chat_jid TEXT NOT NULL,
+    chat_name TEXT,
+    sender_jid TEXT,
+    sender_name TEXT,
+    content TEXT,
+    media_type TEXT,
+    media_path TEXT,
+    is_from_me INTEGER DEFAULT 0,
+    is_group INTEGER DEFAULT 0,
+    timestamp INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_inbox_chat ON whatsapp_inbox(chat_jid);
+  CREATE INDEX IF NOT EXISTS idx_inbox_ts ON whatsapp_inbox(timestamp);
+
   CREATE TABLE IF NOT EXISTS scheduled_tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -374,6 +390,37 @@ export function updateTaskAfterRun(id, lastRun) {
 
 export function deleteScheduledTask(id) {
   db.prepare("DELETE FROM scheduled_tasks WHERE id = ?").run(id);
+}
+
+// --- WhatsApp Inbox (passive collection) ---
+export function storeInboxMessage(msg) {
+  db.prepare(`
+    INSERT OR IGNORE INTO whatsapp_inbox (id, chat_jid, chat_name, sender_jid, sender_name, content, media_type, media_path, is_from_me, is_group, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    msg.id, msg.chat_jid, msg.chat_name || null, msg.sender_jid || null,
+    msg.sender_name || null, msg.content || null, msg.media_type || null,
+    msg.media_path || null, msg.is_from_me ? 1 : 0, msg.is_group ? 1 : 0,
+    msg.timestamp
+  );
+}
+
+export function getInboxMessages(chatJid, limit = 50) {
+  if (chatJid) {
+    return db.prepare("SELECT * FROM whatsapp_inbox WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?").all(chatJid, limit);
+  }
+  return db.prepare("SELECT * FROM whatsapp_inbox ORDER BY timestamp DESC LIMIT ?").all(limit);
+}
+
+export function getInboxChats() {
+  return db.prepare(`
+    SELECT chat_jid, chat_name, is_group, MAX(timestamp) as last_message, COUNT(*) as message_count
+    FROM whatsapp_inbox GROUP BY chat_jid ORDER BY last_message DESC
+  `).all();
+}
+
+export function getInboxSearch(query, limit = 50) {
+  return db.prepare("SELECT * FROM whatsapp_inbox WHERE content LIKE ? ORDER BY timestamp DESC LIMIT ?").all(`%${query}%`, limit);
 }
 
 export { db };

@@ -1,7 +1,6 @@
 /**
  * BuilderClaw — Container Runner
  * Manages Docker containers for Bear and sub-agents.
- * Adapted from Bear OS / NanoClaw pattern.
  * One persistent container per agent with IPC, sessions, and isolated workspace.
  */
 import { spawn, execSync, execFileSync } from "child_process";

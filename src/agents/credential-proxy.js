@@ -9,7 +9,7 @@
  *             API key via /api/oauth/claude_cli/create_api_key.
  *             Proxy injects real OAuth token on that exchange request.
  *
- * Adapted from Bear OS / NanoClaw.
+ * BuilderClaw credential proxy.
  */
 import { createServer } from "http";
 import { request as httpsRequest } from "https";
